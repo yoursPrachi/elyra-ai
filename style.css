@@ -1,4 +1,4 @@
-/* 1. CORE RESET */
+/* 1. CORE & NATIVE FEEL */
 * { 
   box-sizing: border-box; 
   margin: 0; 
@@ -7,178 +7,158 @@
 }
 
 :root {
-  --whatsapp-green: #075e54;
-  --bg-chat: #e5ddd5;
-  --msg-user: #dcf8c6;
-  --msg-bot: #ffffff;
+  --wa-green: #075e54;
+  --wa-teal: #128c7e;
+  --wa-bg: #e5ddd5;
+  --user-bubble: #e7ffdb;
+  --bot-bubble: #ffffff;
 }
 
 body, html {
   height: 100%;
   width: 100%;
-  background: #111b21;
-  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  overflow: hidden; /* Body scroll block taaki keyboard smooth chale */
+  background: #0b141a; /* Desktop background color */
+  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  overflow: hidden;
 }
 
 /* 2. APP CONTAINER */
 .app {
   display: flex;
   flex-direction: column;
-  height: 100dvh; /* Dynamic height for mobile keyboards */
+  height: 100dvh;
   max-width: 500px;
   margin: auto;
-  background-color: var(--bg-chat);
-  background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
-  background-blend-mode: overlay;
   position: relative;
+  background-color: var(--wa-bg);
+  /* Realistic WhatsApp Wallpaper */
+  background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+  background-repeat: repeat;
+  background-size: 400px;
 }
 
-/* 3. FIXED HEADER */
+/* 3. PREMIUM TOPBAR */
 .topbar {
   flex-shrink: 0;
-  height: 60px;
-  background: var(--whatsapp-green);
+  height: 62px;
+  background: var(--wa-green);
   color: white;
   display: flex;
   align-items: center;
-  padding: 0 16px;
-  gap: 12px;
+  padding: 0 12px;
+  gap: 10px;
   z-index: 100;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
 .topbar img { 
-  width: 40px; 
-  height: 40px; 
+  width: 40px; height: 40px; 
   border-radius: 50%; 
-  object-fit: cover;
+  background: #eee;
 }
 
-.topbar h4 { font-size: 16px; margin: 0; }
-.topbar small { font-size: 12px; opacity: 0.8; }
+.topbar div h4 { font-size: 16px; font-weight: 500; }
+.topbar div small { font-size: 12px; opacity: 0.9; }
 
-/* 4. CHAT AREA (The Bottom-Up Logic) */
+/* 4. CHAT AREA */
 main {
   flex: 1;
   overflow-y: auto;
-  padding: 15px;
+  padding: 12px 16px;
   display: flex;
   flex-direction: column;
-  /* Isse naya msg hamesha neeche dikhega */
-  justify-content: flex-start; 
-  gap: 10px;
-  -webkit-overflow-scrolling: touch;
+  gap: 4px; /* Real apps keep messages tight */
+  scrollbar-width: none;
 }
+main::-webkit-scrollbar { display: none; }
 
-/* Spacer to push messages to bottom when list is short */
-main::before {
-  content: '';
-  margin-top: auto;
-}
+/* Spacer for bottom alignment */
+main::before { content: ''; margin-top: auto; }
 
-/* 5. MESSAGE BUBBLES */
+/* 5. REALISTIC BUBBLES WITH TAILS */
 .msg {
-  max-width: 80%;
-  padding: 10px 14px;
-  font-size: 15px;
-  line-height: 1.4;
+  max-width: 85%;
+  padding: 8px 12px;
+  font-size: 14.5px;
+  line-height: 1.5;
   position: relative;
-  box-shadow: 0 1px 1px rgba(0,0,0,0.15);
-  animation: msgPop 0.2s ease;
+  box-shadow: 0 1px 0.5px rgba(0,0,0,0.15);
+  margin-bottom: 2px;
 }
 
-@keyframes msgPop {
-  from { opacity: 0; transform: translateY(10px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
-}
-
+/* User Message + Tail */
 .user {
   align-self: flex-end;
-  background: var(--msg-user);
-  border-radius: 12px 12px 2px 12px; /* Chat tail effect */
+  background: var(--user-bubble);
+  border-radius: 8px 0px 8px 8px;
+}
+.user::after {
+  content: "";
+  position: absolute;
+  top: 0; right: -8px;
+  width: 10px; height: 12px;
+  background: var(--user-bubble);
+  clip-path: polygon(0 0, 0 100%, 100% 0);
 }
 
+/* Bot Message + Tail */
 .bot {
   align-self: flex-start;
-  background: var(--msg-bot);
-  border-radius: 12px 12px 12px 2px;
+  background: var(--bot-bubble);
+  border-radius: 0px 8px 8px 8px;
 }
-
-/* 6. EDIT MENU (Sleek Look) */
-.menu {
+.bot::after {
+  content: "";
   position: absolute;
-  top: -35px;
-  right: 0;
-  background: #333;
-  color: white;
-  border-radius: 6px;
-  display: flex;
-  font-size: 12px;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
-  z-index: 50;
+  top: 0; left: -8px;
+  width: 10px; height: 12px;
+  background: var(--bot-bubble);
+  clip-path: polygon(100% 0, 100% 100%, 0 0);
 }
 
-.menu div { padding: 6px 12px; cursor: pointer; }
-.menu div:first-child { border-right: 1px solid #555; }
-
-/* 7. INPUT BAR */
+/* 6. INPUT BAR (RE-DESIGNED) */
 .input-bar {
   flex-shrink: 0;
-  background: #f0f2f5;
-  padding: 10px 12px;
+  padding: 8px 10px;
   display: flex;
   align-items: center;
   gap: 8px;
-  border-top: 1px solid #ddd;
+  background: transparent; /* Makes it float over wallpaper */
 }
 
 .input-bar input {
   flex: 1;
-  padding: 12px 16px;
+  padding: 12px 18px;
   border-radius: 25px;
   border: none;
-  font-size: 16px; /* Best for mobile keyboard popup */
+  font-size: 16px;
   outline: none;
   background: white;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 .input-bar button {
-  width: 46px;
-  height: 46px;
-  background: #00a884;
+  width: 48px; height: 48px;
+  background: var(--wa-teal);
   color: white;
   border: none;
   border-radius: 50%;
-  cursor: pointer;
   display: flex;
   align-items: center;
   justify-content: center;
-  font-size: 20px;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-/* 8. TYPING INDICATOR */
-.typing {
-  padding: 5px 15px;
-  font-size: 13px;
-  color: #666;
-  display: flex;
-  gap: 3px;
+/* 7. TYPING ANIMATION */
+.typing { 
+  padding: 5px 20px; 
+  font-size: 13px; 
+  color: #555; 
+  display: flex; gap: 4px;
 }
-
-.typing span {
-  width: 6px; height: 6px;
-  background: #999;
-  border-radius: 50%;
-  animation: blink 1.4s infinite;
-}
+.typing span { width: 6px; height: 6px; background: #999; border-radius: 50%; animation: blink 1.4s infinite; }
 .typing span:nth-child(2) { animation-delay: 0.2s; }
 .typing span:nth-child(3) { animation-delay: 0.4s; }
 
-@keyframes blink {
-  0% { opacity: 0.2; }
-  50% { opacity: 1; }
-  100% { opacity: 0.2; }
-}
-
+@keyframes blink { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
 .hidden { display: none !important; }
