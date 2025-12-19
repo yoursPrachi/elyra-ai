@@ -1,5 +1,5 @@
 import { db } from "./firebase.js";
-import { getSmartReply } from "./smartReply.js"; // Smart Reply Import kiya
+import { getSmartReply } from "./smartReply.js";
 import {
   collection, addDoc, updateDoc, deleteDoc,
   doc, serverTimestamp
@@ -9,6 +9,10 @@ const chat = document.getElementById("chat");
 const input = document.getElementById("input");
 const typing = document.getElementById("typing");
 const status = document.getElementById("status");
+
+// Spam Control Variables
+let lastUserMsg = "";
+let repeatCount = 0;
 
 function scrollToBottom() {
   setTimeout(() => {
@@ -20,7 +24,6 @@ function addMsg(text, cls, docId = null) {
   const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const d = document.createElement("div");
   d.className = `msg ${cls}`;
-  
   d.innerHTML = `
     <span>${text}</span>
     <span class="time">
@@ -40,6 +43,62 @@ function addMsg(text, cls, docId = null) {
   scrollToBottom();
 }
 
+// Main Send Function
+window.send = async () => {
+  const text = input.value.trim();
+  if (!text) return;
+
+  // --- 1. SPAM CHECK LOGIC ---
+  if (text.toLowerCase() === lastUserMsg.toLowerCase()) {
+    repeatCount++;
+  } else {
+    repeatCount = 0;
+    lastUserMsg = text;
+  }
+
+  input.value = "";
+  input.blur(); // Keyboard Hide
+
+  // --- 2. UI & FIREBASE SAVE ---
+  try {
+    const ref = await addDoc(
+      collection(db, "chats", "user", "messages"),
+      { text, createdAt: serverTimestamp() }
+    );
+    addMsg(text, "user", ref.id);
+
+    // --- 3. REPEAT CHECK REACTION ---
+    if (repeatCount >= 3) {
+      typing.classList.remove("hidden");
+      setTimeout(() => {
+        typing.classList.add("hidden");
+        const roastMsgs = [
+          "Ek hi baat bar bar bol kar paka rahe ho! 🙄",
+          "Bhai, record todna hai kya? Kuch naya bolo! 🥱",
+          "Lagta hai aapki suyi atak gayi hai. 😂",
+          "Bas bhi karo! Main samajh gayi ek hi baar mein. ✋"
+        ];
+        addMsg(roastMsgs[Math.floor(Math.random() * roastMsgs.length)], "bot");
+      }, 1000);
+      return; // Stop further logic
+    }
+
+    // --- 4. NORMAL BOT REPLY ---
+    typing.classList.remove("hidden");
+    const botReply = await getSmartReply(text);
+    
+    setTimeout(() => {
+      typing.classList.add("hidden");
+      addMsg(botReply, "bot");
+    }, 1500);
+
+  } catch (error) {
+    console.error("Error:", error);
+  }
+};
+
+// ... Baki functions (Menu, Edit, Delete) wahi rahenge ...
+
 input.addEventListener("keypress", (e) => {
   if (e.key === "Enter") {
     e.preventDefault(); 
@@ -47,90 +106,6 @@ input.addEventListener("keypress", (e) => {
   }
 });
 
-let lastUserMsg = "";
-let repeatCount = 0;
-
-window.send = async () => {
-  const text = input.value.trim();
-  if (!text) return;
-
-  input.value = "";
-  input.blur();
-
-  // --- SPAM CHECK LOGIC ---
-  if (text.toLowerCase() === lastUserMsg.toLowerCase()) {
-    repeatCount++;
-  } else {
-    repeatCount = 0; // Agar msg badal gaya toh reset
-    lastUserMsg = text;
-  }
-
-  addMsg(text, "user");
-
-  // Agar user 3 baar se zyada ek hi cheez bole
-  if (repeatCount >= 3) {
-    typing.classList.remove("hidden");
-    setTimeout(() => {
-      typing.classList.add("hidden");
-      const roastMsgs = [
-        "Ek hi baat bar bar bol kar paka rahe ho! 🙄",
-        "Bhai/Behen, record todna hai kya? Kuch naya bolo! 🥱",
-        "Lagta hai aapki suyi atak gayi hai. 😂",
-        "Bas bhi karo! Main samajh gayi ek hi baar mein. ✋"
-      ];
-      addMsg(roastMsgs[Math.floor(Math.random() * roastMsgs.length)], "bot");
-    }, 1000);
-    return; // Aage ka normal reply logic stop kar do
-  }
-
-  // --- NORMAL REPLY LOGIC (smartReply) ---
-  typing.classList.remove("hidden");
-  const reply = await getSmartReply(text);
-  
-  setTimeout(() => {
-    typing.classList.add("hidden");
-    addMsg(reply, "bot");
-  }, 1000);
-};
-
-
-
-// --- UPDATED SEND FUNCTION ---
-window.send = async () => {
-  const text = input.value.trim();
-  if (!text) return;
-
-  input.value = "";
-  input.blur(); // Keyboard auto-hide for better UX
-
-  try {
-    // 1. Save User Message to Firebase
-    const ref = await addDoc(
-      collection(db, "chats", "user", "messages"),
-      { text, createdAt: serverTimestamp() }
-    );
-
-    addMsg(text, "user", ref.id);
-
-    // 2. Start Bot Thinking (Typing Animation)
-    typing.classList.remove("hidden");
-    scrollToBottom();
-
-    // 3. Get Answer from Smart Reply (Static + Learning Logic)
-    const botReply = await getSmartReply(text);
-    
-    // 4. Realistic Bot Delay
-    setTimeout(() => {
-      typing.classList.add("hidden");
-      addMsg(botReply, "bot");
-    }, 1500);
-    
-  } catch (error) {
-    console.error("Error:", error);
-  }
-};
-
-// --- MENU & STATUS LOGIC ---
 function showMenu(el, id) {
   const old = document.querySelector(".menu");
   if (old) old.remove();
