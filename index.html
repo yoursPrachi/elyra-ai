@@ -1,31 +1,33 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Elyra AI</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <title>Elyra AI</title>
+  <link rel="stylesheet" href="style.css" />
 </head>
 <body>
 
-<div class="app">
-  <div class="header">
-    <div class="avatar"></div>
+<div class="chat-container">
+  <div class="chat-header">
+    <img src="https://i.imgur.com/8Km9tLL.png">
     <div>
-      <h3>Elyra</h3>
+      <h3>Elyra AI</h3>
       <span>online</span>
     </div>
   </div>
 
-  <div id="chat" class="chat"></div>
+  <div id="messages" class="chat-body"></div>
 
-  <div class="input-box">
+  <div id="typing" class="typing hidden">
+    <span></span><span></span><span></span>
+  </div>
+
+  <div class="chat-input">
     <input id="input" placeholder="Type a message..." />
-    <button onclick="sendMessage()">➤</button>
+    <button onclick="send()">➤</button>
   </div>
 </div>
 
-<script type="module" src="firebase.js"></script>
 <script type="module" src="app.js"></script>
 </body>
 </html>
