@@ -10,6 +10,11 @@ export async function getSmartReply(text) {
     return preReplies[t];
   }
 
+  // smartReply.js ke search logic mein ye add karein
+const q = query(collection(db, "brain"), where("question", "==", t));
+const snap = await getDocs(q);
+if (!snap.empty) return snap.docs[0].data().answer;
+  
   // 2. Keyword Search (Agar pura sentence match na ho, to main word dhoondo)
   const keys = Object.keys(preReplies);
   for (let key of keys) {
