@@ -1,3 +1,38 @@
-<h2>Admin – Train Elyra</h2>
-<div id="list"></div>
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Elyra AI | Admin Training</title>
+  <link rel="stylesheet" href="../style.css"> <style>
+    body { background: #111b21; color: white; padding: 20px; }
+    .admin-container { max-width: 800px; margin: auto; }
+    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 30px; }
+    .card { background: #202c33; padding: 20px; border-radius: 12px; margin-bottom: 15px; border-left: 5px solid #00a884; }
+    .q-text { font-size: 18px; margin-bottom: 10px; color: #e9edef; }
+    .actions { display: flex; gap: 10px; }
+    button { padding: 10px 20px; border-radius: 8px; border: none; cursor: pointer; font-weight: bold; }
+    .btn-train { background: #00a884; color: white; }
+    .btn-ignore { background: #ea0038; color: white; }
+    .stats { font-size: 14px; opacity: 0.6; }
+  </style>
+</head>
+<body>
+
+<div class="admin-container">
+  <div class="header">
+    <div>
+      <h1>Elyra AI Admin</h1>
+      <p class="stats" id="count-label">Loading questions...</p>
+    </div>
+    <button onclick="location.reload()" style="background:#333; color:white;">🔄 Refresh</button>
+  </div>
+
+  <div id="queue-list">
+    </div>
+</div>
+
 <script type="module" src="admin.js"></script>
+</body>
+</html>
+
