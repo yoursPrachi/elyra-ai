@@ -7,29 +7,38 @@ import {
 export async function getSmartReply(text) {
   const t = text.toLowerCase().trim();
 
-  // 1. Static & Brain Search (Pehle answer dhoondo)
-  if (preReplies[t]) return preReplies[t];
+  // --- STEP 1: STATIC PRE-REPLIES (Priority #1) ---
+  // Sabse pehle 'hi', 'hello' jaise fix answers check karo
+  if (preReplies[t]) {
+    return preReplies[t];
+  }
 
-  const qBrain = query(collection(db, "brain"), where("question", "==", t));
-  const snapBrain = await getDocs(qBrain);
-  if (!snapBrain.empty) return snapBrain.docs[0].data().answer;
+  // --- STEP 2: LEARNED BRAIN (Priority #2) ---
+  // Fir wo check karo jo aapne admin panel se sikhaya hai
+  try {
+    const qBrain = query(collection(db, "brain"), where("question", "==", t));
+    const snapBrain = await getDocs(qBrain);
+    if (!snapBrain.empty) {
+      return snapBrain.docs[0].data().answer;
+    }
+  } catch (e) {
+    console.error("Brain search error:", e);
+  }
 
-  // 2. AUTO-SAVE & COUNT LOGIC (Agar answer nahi mila)
+  // --- STEP 3: AUTO-SAVE TO QUEUE (Last Resort) ---
+  // Agar upar dono mein nahi mila, tabhi queue mein daalo
   try {
     const qQueue = query(collection(db, "learningQueue"), where("question", "==", t));
     const snapQueue = await getDocs(qQueue);
 
     if (!snapQueue.empty) {
-      // Agar sawal pehle se hai, toh sirf count badhao
       const existingDoc = snapQueue.docs[0];
       const newCount = (existingDoc.data().count || 1) + 1;
-      
       await updateDoc(doc(db, "learningQueue", existingDoc.id), {
         count: newCount,
         lastAsked: serverTimestamp()
       });
     } else {
-      // Agar naya sawal hai, toh fresh entry karo
       await addDoc(collection(db, "learningQueue"), {
         question: t,
         count: 1,
@@ -38,14 +47,14 @@ export async function getSmartReply(text) {
       });
     }
   } catch (e) {
-    console.error("Auto-save error:", e);
+    console.error("Queue save error:", e);
   }
 
-  // 3. Fallback Responses
+  // Fallback Response
   const fallbacks = [
-    "Hmm, ye sawal kaafi log pooch rahe hain! Main ise seekh rahi hoon. ✨",
-    "Interesting! Mujhse pehle bhi kisi ne ye pucha tha. Main jald hi iska jawab seekh lungi. 🧠",
-    "Achha sawal hai! Elyra AI abhi iska answer process kar rahi hai. 😄"
+    "Hmm, interesting 🤔 Iske baare mein aur batao.",
+    "Achha sawal hai 👀 Main ise seekhne ki koshish karungi!",
+    "Ispe thoda sochna padega 😄 Wese aapka din kaisa ja raha hai?"
   ];
   return fallbacks[Math.floor(Math.random() * fallbacks.length)];
 }
