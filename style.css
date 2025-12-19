@@ -1,101 +1,184 @@
-/* 1. RESET & KEYBOARD COMPATIBILITY */
+/* 1. CORE RESET */
 * { 
   box-sizing: border-box; 
   margin: 0; 
   padding: 0; 
+  -webkit-tap-highlight-color: transparent; 
 }
 
-html, body {
+:root {
+  --whatsapp-green: #075e54;
+  --bg-chat: #e5ddd5;
+  --msg-user: #dcf8c6;
+  --msg-bot: #ffffff;
+}
+
+body, html {
   height: 100%;
   width: 100%;
-  overflow: hidden; /* Screen ko bounce hone se rokta hai */
   background: #111b21;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  overflow: hidden; /* Body scroll block taaki keyboard smooth chale */
 }
 
-/* 2. MAIN CONTAINER (The Secret Sauce) */
+/* 2. APP CONTAINER */
 .app {
   display: flex;
   flex-direction: column;
-  /* Mobile keyboard open hone par ye height auto-adjust hogi */
-  height: 100dvh; 
+  height: 100dvh; /* Dynamic height for mobile keyboards */
   max-width: 500px;
   margin: auto;
-  background-color: #e5ddd5;
+  background-color: var(--bg-chat);
   background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
   background-blend-mode: overlay;
   position: relative;
 }
 
-/* 3. HEADER (Z-Index important hai) */
+/* 3. FIXED HEADER */
 .topbar {
+  flex-shrink: 0;
   height: 60px;
-  background: #075e54;
+  background: var(--whatsapp-green);
   color: white;
   display: flex;
   align-items: center;
   padding: 0 16px;
   gap: 12px;
-  flex-shrink: 0;
-  z-index: 10;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  z-index: 100;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
 }
 
-.topbar img { width: 40px; height: 40px; border-radius: 50%; }
+.topbar img { 
+  width: 40px; 
+  height: 40px; 
+  border-radius: 50%; 
+  object-fit: cover;
+}
 
-/* 4. CHAT AREA (Ismein hi scroll hoga) */
+.topbar h4 { font-size: 16px; margin: 0; }
+.topbar small { font-size: 12px; opacity: 0.8; }
+
+/* 4. CHAT AREA (The Bottom-Up Logic) */
 main {
-  flex: 1; 
+  flex: 1;
   overflow-y: auto;
   padding: 15px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
-  /* Scroll smooth karne ke liye */
-  -webkit-overflow-scrolling: touch; 
+  /* Isse naya msg hamesha neeche dikhega */
+  justify-content: flex-start; 
+  gap: 10px;
+  -webkit-overflow-scrolling: touch;
 }
 
-/* 5. MESSAGES */
+/* Spacer to push messages to bottom when list is short */
+main::before {
+  content: '';
+  margin-top: auto;
+}
+
+/* 5. MESSAGE BUBBLES */
 .msg {
   max-width: 80%;
-  padding: 8px 12px;
+  padding: 10px 14px;
   font-size: 15px;
-  border-radius: 12px;
-  box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+  line-height: 1.4;
+  position: relative;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.15);
+  animation: msgPop 0.2s ease;
 }
-.user { align-self: flex-end; background: #dcf8c6; border-top-right-radius: 2px; }
-.bot { align-self: flex-start; background: #ffffff; border-top-left-radius: 2px; }
 
-/* 6. INPUT BAR (Most Critical Part) */
+@keyframes msgPop {
+  from { opacity: 0; transform: translateY(10px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.user {
+  align-self: flex-end;
+  background: var(--msg-user);
+  border-radius: 12px 12px 2px 12px; /* Chat tail effect */
+}
+
+.bot {
+  align-self: flex-start;
+  background: var(--msg-bot);
+  border-radius: 12px 12px 12px 2px;
+}
+
+/* 6. EDIT MENU (Sleek Look) */
+.menu {
+  position: absolute;
+  top: -35px;
+  right: 0;
+  background: #333;
+  color: white;
+  border-radius: 6px;
+  display: flex;
+  font-size: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+  z-index: 50;
+}
+
+.menu div { padding: 6px 12px; cursor: pointer; }
+.menu div:first-child { border-right: 1px solid #555; }
+
+/* 7. INPUT BAR */
 .input-bar {
+  flex-shrink: 0;
   background: #f0f2f5;
   padding: 10px 12px;
   display: flex;
   align-items: center;
   gap: 8px;
-  flex-shrink: 0; /* Keyboard isko daba na sake */
   border-top: 1px solid #ddd;
 }
 
 .input-bar input {
   flex: 1;
   padding: 12px 16px;
-  border-radius: 24px;
-  border: 1px solid #ccc;
-  font-size: 16px; /* 16px se kam pe iPhone zoom kar deta hai, isliye 16px best hai */
+  border-radius: 25px;
+  border: none;
+  font-size: 16px; /* Best for mobile keyboard popup */
   outline: none;
   background: white;
-  /* Touch focus allow karne ke liye */
-  pointer-events: auto !important; 
 }
 
 .input-bar button {
-  width: 45px;
-  height: 45px;
+  width: 46px;
+  height: 46px;
   background: #00a884;
   color: white;
   border: none;
   border-radius: 50%;
-  flex-shrink: 0;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 20px;
+}
+
+/* 8. TYPING INDICATOR */
+.typing {
+  padding: 5px 15px;
+  font-size: 13px;
+  color: #666;
+  display: flex;
+  gap: 3px;
+}
+
+.typing span {
+  width: 6px; height: 6px;
+  background: #999;
+  border-radius: 50%;
+  animation: blink 1.4s infinite;
+}
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes blink {
+  0% { opacity: 0.2; }
+  50% { opacity: 1; }
+  100% { opacity: 0.2; }
 }
 
 .hidden { display: none !important; }
