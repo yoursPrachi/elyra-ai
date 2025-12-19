@@ -7,54 +7,54 @@ import {
 export async function getSmartReply(text) {
   const t = text.toLowerCase().trim();
 
-  // --- STEP 1: STATIC PRE-REPLIES (Priority #1) ---
-  // Sabse pehle 'hi', 'hello' jaise fix answers check karo
-  if (preReplies[t]) {
-    return preReplies[t];
-  }
+  // 1. Pehle Pre-replies check karo
+  if (preReplies[t]) return preReplies[t];
 
-  // --- STEP 2: LEARNED BRAIN (Priority #2) ---
-  // Fir wo check karo jo aapne admin panel se sikhaya hai
+  // 2. Fir Brain (Learned answers) check karo
   try {
     const qBrain = query(collection(db, "brain"), where("question", "==", t));
     const snapBrain = await getDocs(qBrain);
-    if (!snapBrain.empty) {
-      return snapBrain.docs[0].data().answer;
-    }
-  } catch (e) {
-    console.error("Brain search error:", e);
-  }
+    if (!snapBrain.empty) return snapBrain.docs[0].data().answer;
+  } catch (e) { console.error(e); }
 
-  // --- STEP 3: AUTO-SAVE TO QUEUE (Last Resort) ---
-  // Agar upar dono mein nahi mila, tabhi queue mein daalo
+  // 3. AGAR NAHI MILA -> Save or Update in Queue
+  await handleDuplicateQuestion(t);
+
+  // Fallback return karo
+  return {
+    type: "LEARNING_MODE",
+    question: t,
+    msg: "Hmm, iska jawab mujhe nahi pata. 😅 Kya tum mujhe bata sakte ho iska sahi jawab kya hoga?"
+  };
+}
+
+// --- Duplicate Check Function ---
+async function handleDuplicateQuestion(question) {
   try {
-    const qQueue = query(collection(db, "learningQueue"), where("question", "==", t));
+    const qQueue = query(collection(db, "learningQueue"), where("question", "==", question));
     const snapQueue = await getDocs(qQueue);
 
     if (!snapQueue.empty) {
+      // Agar sawal pehle se hai, toh duplicate create mat karo, sirf count badhao
       const existingDoc = snapQueue.docs[0];
       const newCount = (existingDoc.data().count || 1) + 1;
+      
       await updateDoc(doc(db, "learningQueue", existingDoc.id), {
         count: newCount,
-        lastAsked: serverTimestamp()
+        lastAsked: serverTimestamp() // Time update karo
       });
+      console.log("Count updated for existing question.");
     } else {
+      // Agar bilkul naya hai, tabhi addDoc karo
       await addDoc(collection(db, "learningQueue"), {
-        question: t,
+        question: question,
         count: 1,
         status: "unlearned",
-        lastAsked: serverTimestamp()
+        createdAt: serverTimestamp()
       });
+      console.log("New question saved to queue.");
     }
   } catch (e) {
-    console.error("Queue save error:", e);
+    console.error("Queue management error:", e);
   }
-
-  // Fallback Response
-  const fallbacks = [
-    "Hmm, interesting 🤔 Iske baare mein aur batao.",
-    "Achha sawal hai 👀 Main ise seekhne ki koshish karungi!",
-    "Ispe thoda sochna padega 😄 Wese aapka din kaisa ja raha hai?"
-  ];
-  return fallbacks[Math.floor(Math.random() * fallbacks.length)];
 }
