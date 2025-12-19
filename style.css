@@ -1,164 +1,136 @@
-/* 1. CORE & NATIVE FEEL */
-* { 
-  box-sizing: border-box; 
-  margin: 0; 
-  padding: 0; 
-  -webkit-tap-highlight-color: transparent; 
-}
+/* 1. SYSTEM CONFIG */
+* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 
 :root {
-  --wa-green: #075e54;
-  --wa-teal: #128c7e;
-  --wa-bg: #e5ddd5;
-  --user-bubble: #e7ffdb;
+  --wa-header: #075e54;
+  --wa-bg: #efeae2;
+  --user-bubble: #dcf8c6;
   --bot-bubble: #ffffff;
+  --text-main: #111b21;
+  --text-muted: #667781;
 }
 
-body, html {
-  height: 100%;
-  width: 100%;
-  background: #0b141a; /* Desktop background color */
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  overflow: hidden;
+body {
+  background: #111b21;
+  font-family: 'Segoe UI', Helvetica, Arial, sans-serif;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
 }
 
-/* 2. APP CONTAINER */
+/* 2. APP BOX */
 .app {
+  width: 100%;
+  max-width: 500px;
+  height: 100dvh;
   display: flex;
   flex-direction: column;
-  height: 100dvh;
-  max-width: 500px;
-  margin: auto;
-  position: relative;
-  background-color: var(--wa-bg);
-  /* Realistic WhatsApp Wallpaper */
+  background: var(--wa-bg);
   background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
-  background-repeat: repeat;
-  background-size: 400px;
+  background-blend-mode: overlay;
+  position: relative;
 }
 
-/* 3. PREMIUM TOPBAR */
+/* 3. PREMIUM TOPBAR (Realistic Elevation) */
 .topbar {
-  flex-shrink: 0;
-  height: 62px;
-  background: var(--wa-green);
+  height: 60px;
+  background: var(--wa-header);
   color: white;
   display: flex;
   align-items: center;
-  padding: 0 12px;
-  gap: 10px;
+  padding: 0 15px;
+  gap: 12px;
+  box-shadow: 0 2px 3px rgba(0,0,0,0.15);
   z-index: 100;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
 .topbar img { 
   width: 40px; height: 40px; 
   border-radius: 50%; 
-  background: #eee;
+  border: 1px solid rgba(255,255,255,0.2);
 }
 
-.topbar div h4 { font-size: 16px; font-weight: 500; }
-.topbar div small { font-size: 12px; opacity: 0.9; }
+.topbar h4 { font-size: 16px; font-weight: 500; flex: 1; }
 
-/* 4. CHAT AREA */
+/* 4. CHAT AREA (The Real Logic) */
 main {
   flex: 1;
   overflow-y: auto;
-  padding: 12px 16px;
+  padding: 12px;
   display: flex;
   flex-direction: column;
-  gap: 4px; /* Real apps keep messages tight */
-  scrollbar-width: none;
+  gap: 2px; /* Real apps keep same-side messages very close */
 }
-main::-webkit-scrollbar { display: none; }
 
-/* Spacer for bottom alignment */
-main::before { content: ''; margin-top: auto; }
+/* Spacing between different users */
+.msg + .user, .user + .bot { margin-top: 8px; }
 
-/* 5. REALISTIC BUBBLES WITH TAILS */
+/* 5. NATIVE BUBBLES WITH TAILS & TIMESTAMPS */
 .msg {
   max-width: 85%;
-  padding: 8px 12px;
-  font-size: 14.5px;
-  line-height: 1.5;
+  padding: 6px 10px 4px 10px;
+  font-size: 14.2px;
   position: relative;
-  box-shadow: 0 1px 0.5px rgba(0,0,0,0.15);
-  margin-bottom: 2px;
+  box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
+  color: var(--text-main);
+  display: flex;
+  flex-direction: column;
 }
 
-/* User Message + Tail */
+/* Time styling inside bubble */
+.msg::after {
+  content: "12:00 PM"; /* Placeholder, logic niche JS mein hai */
+  font-size: 10px;
+  color: var(--text-muted);
+  align-self: flex-end;
+  margin-top: 2px;
+  margin-left: 20px;
+}
+
 .user {
   align-self: flex-end;
   background: var(--user-bubble);
   border-radius: 8px 0px 8px 8px;
 }
-.user::after {
-  content: "";
-  position: absolute;
-  top: 0; right: -8px;
-  width: 10px; height: 12px;
-  background: var(--user-bubble);
-  clip-path: polygon(0 0, 0 100%, 100% 0);
-}
 
-/* Bot Message + Tail */
 .bot {
   align-self: flex-start;
   background: var(--bot-bubble);
   border-radius: 0px 8px 8px 8px;
 }
-.bot::after {
-  content: "";
-  position: absolute;
-  top: 0; left: -8px;
-  width: 10px; height: 12px;
-  background: var(--bot-bubble);
-  clip-path: polygon(100% 0, 100% 100%, 0 0);
-}
 
-/* 6. INPUT BAR (RE-DESIGNED) */
+/* 6. MODERN FLOATING INPUT */
 .input-bar {
-  flex-shrink: 0;
-  padding: 8px 10px;
+  padding: 10px;
   display: flex;
   align-items: center;
   gap: 8px;
-  background: transparent; /* Makes it float over wallpaper */
+  background: transparent; /* Wallpaper visible behind */
 }
 
 .input-bar input {
   flex: 1;
-  padding: 12px 18px;
-  border-radius: 25px;
+  padding: 10px 18px;
+  border-radius: 24px;
   border: none;
   font-size: 16px;
-  outline: none;
   background: white;
   box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 .input-bar button {
-  width: 48px; height: 48px;
-  background: var(--wa-teal);
-  color: white;
-  border: none;
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
+  width: 45px; height: 45px;
+  background: #00a884;
+  color: white; border: none; border-radius: 50%;
   box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  display: flex; align-items: center; justify-content: center;
 }
 
-/* 7. TYPING ANIMATION */
-.typing { 
-  padding: 5px 20px; 
-  font-size: 13px; 
-  color: #555; 
-  display: flex; gap: 4px;
-}
+/* 7. TYPING DOTS */
+.typing { padding: 10px 20px; display: flex; gap: 4px; }
 .typing span { width: 6px; height: 6px; background: #999; border-radius: 50%; animation: blink 1.4s infinite; }
 .typing span:nth-child(2) { animation-delay: 0.2s; }
 .typing span:nth-child(3) { animation-delay: 0.4s; }
-
 @keyframes blink { 0%, 100% { opacity: 0.3; } 50% { opacity: 1; } }
+
 .hidden { display: none !important; }
