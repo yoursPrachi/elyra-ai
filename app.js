@@ -47,6 +47,54 @@ input.addEventListener("keypress", (e) => {
   }
 });
 
+let lastUserMsg = "";
+let repeatCount = 0;
+
+window.send = async () => {
+  const text = input.value.trim();
+  if (!text) return;
+
+  input.value = "";
+  input.blur();
+
+  // --- SPAM CHECK LOGIC ---
+  if (text.toLowerCase() === lastUserMsg.toLowerCase()) {
+    repeatCount++;
+  } else {
+    repeatCount = 0; // Agar msg badal gaya toh reset
+    lastUserMsg = text;
+  }
+
+  addMsg(text, "user");
+
+  // Agar user 3 baar se zyada ek hi cheez bole
+  if (repeatCount >= 3) {
+    typing.classList.remove("hidden");
+    setTimeout(() => {
+      typing.classList.add("hidden");
+      const roastMsgs = [
+        "Ek hi baat bar bar bol kar paka rahe ho! 🙄",
+        "Bhai/Behen, record todna hai kya? Kuch naya bolo! 🥱",
+        "Lagta hai aapki suyi atak gayi hai. 😂",
+        "Bas bhi karo! Main samajh gayi ek hi baar mein. ✋"
+      ];
+      addMsg(roastMsgs[Math.floor(Math.random() * roastMsgs.length)], "bot");
+    }, 1000);
+    return; // Aage ka normal reply logic stop kar do
+  }
+
+  // --- NORMAL REPLY LOGIC (smartReply) ---
+  typing.classList.remove("hidden");
+  const reply = await getSmartReply(text);
+  
+  setTimeout(() => {
+    typing.classList.add("hidden");
+    addMsg(reply, "bot");
+  }, 1000);
+};
+
+
+
 // --- UPDATED SEND FUNCTION ---
 window.send = async () => {
   const text = input.value.trim();
