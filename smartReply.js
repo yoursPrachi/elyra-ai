@@ -1,46 +1,51 @@
 import { preReplies } from "./preReplies.js";
 import { db } from "./firebase.js";
-import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { 
+  collection, addDoc, getDocs, query, where, updateDoc, doc, serverTimestamp 
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 export async function getSmartReply(text) {
   const t = text.toLowerCase().trim();
 
-  // 1. Direct Object Lookup (Sabse fast)
-  if (preReplies[t]) {
-    return preReplies[t];
-  }
+  // 1. Static & Brain Search (Pehle answer dhoondo)
+  if (preReplies[t]) return preReplies[t];
 
-  // smartReply.js ke search logic mein ye add karein
-const q = query(collection(db, "brain"), where("question", "==", t));
-const snap = await getDocs(q);
-if (!snap.empty) return snap.docs[0].data().answer;
-  
-  // 2. Keyword Search (Agar pura sentence match na ho, to main word dhoondo)
-  const keys = Object.keys(preReplies);
-  for (let key of keys) {
-    if (t.includes(key)) {
-      return preReplies[key];
-    }
-  }
+  const qBrain = query(collection(db, "brain"), where("question", "==", t));
+  const snapBrain = await getDocs(qBrain);
+  if (!snapBrain.empty) return snapBrain.docs[0].data().answer;
 
-  // 3. Learning Queue (Firebase mein save karo taaki aap baad mein sikha sakein)
+  // 2. AUTO-SAVE & COUNT LOGIC (Agar answer nahi mila)
   try {
-    await addDoc(collection(db, "learningQueue"), {
-      question: text,
-      status: "unlearned",
-      time: serverTimestamp() // Date.now() ki jagah serverTimestamp better hai
-    });
+    const qQueue = query(collection(db, "learningQueue"), where("question", "==", t));
+    const snapQueue = await getDocs(qQueue);
+
+    if (!snapQueue.empty) {
+      // Agar sawal pehle se hai, toh sirf count badhao
+      const existingDoc = snapQueue.docs[0];
+      const newCount = (existingDoc.data().count || 1) + 1;
+      
+      await updateDoc(doc(db, "learningQueue", existingDoc.id), {
+        count: newCount,
+        lastAsked: serverTimestamp()
+      });
+    } else {
+      // Agar naya sawal hai, toh fresh entry karo
+      await addDoc(collection(db, "learningQueue"), {
+        question: t,
+        count: 1,
+        status: "unlearned",
+        lastAsked: serverTimestamp()
+      });
+    }
   } catch (e) {
-    console.error("Firebase Error:", e);
+    console.error("Auto-save error:", e);
   }
 
-  // 4. Fallback (Jab bot ko kuch samajh na aaye)
-  const fallback = [
-    "Hmm, interesting 🤔 Iske baare mein aur batao.",
-    "Achha sawal hai 👀 Main ise seekhne ki koshish karunga!",
-    "Ispe thoda sochna padega 😄 Wese aapka din kaisa ja raha hai?",
-    "Elyra AI abhi ye seekh rahi hai... ✨ Kuch aur puchiye?"
+  // 3. Fallback Responses
+  const fallbacks = [
+    "Hmm, ye sawal kaafi log pooch rahe hain! Main ise seekh rahi hoon. ✨",
+    "Interesting! Mujhse pehle bhi kisi ne ye pucha tha. Main jald hi iska jawab seekh lungi. 🧠",
+    "Achha sawal hai! Elyra AI abhi iska answer process kar rahi hai. 😄"
   ];
-  
-  return fallback[Math.floor(Math.random() * fallback.length)];
+  return fallbacks[Math.floor(Math.random() * fallbacks.length)];
 }
