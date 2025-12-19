@@ -1,78 +1,98 @@
+* { box-sizing: border-box }
+
 body {
   margin: 0;
-  background: #ece5dd;
-  font-family: Arial, sans-serif;
+  background: #0b141a;
+  font-family: system-ui, -apple-system;
 }
 
-.chat-container {
-  max-width: 420px;
-  margin: auto;
+.app {
+  max-width: 430px;
   height: 100vh;
+  margin: auto;
   display: flex;
   flex-direction: column;
-  background: #fff;
+  background: #efeae2;
 }
 
-.chat-header {
+/* HEADER */
+.topbar {
   display: flex;
   align-items: center;
-  padding: 10px;
+  gap: 10px;
+  padding: 12px;
   background: #075e54;
-  color: #fff;
+  color: white;
 }
 
-.chat-header img {
-  width: 40px;
-  border-radius: 50%;
-  margin-right: 10px;
-}
-
-.chat-body {
+/* CHAT */
+main {
   flex: 1;
-  padding: 10px;
+  padding: 12px;
   overflow-y: auto;
-  background: url("https://i.imgur.com/9ZQZ4ZP.png");
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
 }
 
 .msg {
   max-width: 75%;
-  padding: 8px 12px;
-  margin: 6px 0;
-  border-radius: 8px;
+  padding: 10px 14px;
+  border-radius: 14px;
   font-size: 14px;
+  position: relative;
 }
 
 .user {
+  align-self: flex-end;
   background: #dcf8c6;
-  margin-left: auto;
 }
 
 .bot {
-  background: #fff;
+  align-self: flex-start;
+  background: white;
 }
 
-.chat-input {
+/* EDIT MENU */
+.menu {
+  position: absolute;
+  top: -28px;
+  right: 0;
+  background: #333;
+  color: white;
+  font-size: 12px;
+  border-radius: 6px;
   display: flex;
-  padding: 8px;
-  background: #f0f0f0;
 }
 
-.chat-input input {
-  flex: 1;
+.menu div {
+  padding: 6px 10px;
+  cursor: pointer;
+}
+
+/* INPUT */
+.input-bar {
+  display: flex;
   padding: 10px;
+  background: #f0f2f5;
+}
+
+.input-bar input {
+  flex: 1;
+  padding: 12px;
   border-radius: 20px;
   border: none;
 }
 
-.chat-input button {
+.input-bar button {
+  width: 44px;
+  border-radius: 50%;
   background: #075e54;
   color: white;
   border: none;
-  padding: 10px 15px;
-  border-radius: 50%;
-  margin-left: 6px;
 }
 
+/* TYPING */
 .typing span {
   width: 6px;
   height: 6px;
@@ -82,13 +102,10 @@ body {
   animation: blink 1.4s infinite both;
 }
 
-.typing span:nth-child(2) { animation-delay: .2s }
-.typing span:nth-child(3) { animation-delay: .4s }
+.hidden { display:none }
 
 @keyframes blink {
-  0% { opacity: .2 }
-  20% { opacity: 1 }
-  100% { opacity: .2 }
+  0%{opacity:.2}
+  20%{opacity:1}
+  100%{opacity:.2}
 }
-
-.hidden { display: none }
