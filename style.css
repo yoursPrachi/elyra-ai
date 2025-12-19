@@ -1,68 +1,74 @@
 body {
   margin: 0;
-  background: #0f172a;
-  font-family: Arial, sans-serif;
+  font-family: system-ui;
+  background: #ece5dd;
 }
 
-.chat-container {
+.app {
   max-width: 420px;
-  margin: auto;
   height: 100vh;
+  margin: auto;
   display: flex;
   flex-direction: column;
-  background: #020617;
+  background: url("https://i.imgur.com/8Km9tLL.jpg") center/cover;
+}
+
+.header {
+  display: flex;
+  align-items: center;
+  background: #075e54;
   color: white;
+  padding: 10px;
 }
 
-.chat-header {
-  padding: 15px;
-  background: #020617;
-  font-weight: bold;
-  text-align: center;
-  border-bottom: 1px solid #1e293b;
+.avatar {
+  width: 40px;
+  height: 40px;
+  background: #ccc;
+  border-radius: 50%;
+  margin-right: 10px;
 }
 
-#messages {
+.chat {
   flex: 1;
   padding: 10px;
   overflow-y: auto;
 }
 
 .msg {
-  margin: 8px 0;
-  padding: 10px;
-  border-radius: 10px;
-  max-width: 80%;
+  max-width: 75%;
+  padding: 8px 12px;
+  margin-bottom: 8px;
+  border-radius: 8px;
 }
 
 .user {
-  background: #2563eb;
-  align-self: flex-end;
+  background: #dcf8c6;
+  margin-left: auto;
 }
 
 .bot {
-  background: #1e293b;
-  align-self: flex-start;
+  background: #fff;
 }
 
-.chat-input {
+.input-box {
   display: flex;
-  padding: 10px;
-  border-top: 1px solid #1e293b;
+  padding: 8px;
+  background: #f0f0f0;
 }
 
-.chat-input input {
+.input-box input {
   flex: 1;
   padding: 10px;
-  border-radius: 5px;
+  border-radius: 20px;
   border: none;
 }
 
-.chat-input button {
-  margin-left: 5px;
-  padding: 10px;
-  background: #2563eb;
+.input-box button {
+  margin-left: 8px;
+  width: 40px;
+  border-radius: 50%;
+  background: #075e54;
   color: white;
   border: none;
-  border-radius: 5px;
 }
