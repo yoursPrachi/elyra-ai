@@ -1,45 +1,45 @@
 body {
   margin: 0;
-  font-family: system-ui;
   background: #ece5dd;
+  font-family: Arial, sans-serif;
 }
 
-.app {
+.chat-container {
   max-width: 420px;
-  height: 100vh;
   margin: auto;
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  background: url("https://i.imgur.com/8Km9tLL.jpg") center/cover;
+  background: #fff;
 }
 
-.header {
+.chat-header {
   display: flex;
   align-items: center;
-  background: #075e54;
-  color: white;
   padding: 10px;
+  background: #075e54;
+  color: #fff;
 }
 
-.avatar {
+.chat-header img {
   width: 40px;
-  height: 40px;
-  background: #ccc;
   border-radius: 50%;
   margin-right: 10px;
 }
 
-.chat {
+.chat-body {
   flex: 1;
   padding: 10px;
   overflow-y: auto;
+  background: url("https://i.imgur.com/9ZQZ4ZP.png");
 }
 
 .msg {
   max-width: 75%;
   padding: 8px 12px;
-  margin-bottom: 8px;
+  margin: 6px 0;
   border-radius: 8px;
+  font-size: 14px;
 }
 
 .user {
@@ -51,24 +51,44 @@ body {
   background: #fff;
 }
 
-.input-box {
+.chat-input {
   display: flex;
   padding: 8px;
   background: #f0f0f0;
 }
 
-.input-box input {
+.chat-input input {
   flex: 1;
   padding: 10px;
   border-radius: 20px;
   border: none;
 }
 
-.input-box button {
-  margin-left: 8px;
-  width: 40px;
-  border-radius: 50%;
+.chat-input button {
   background: #075e54;
   color: white;
   border: none;
+  padding: 10px 15px;
+  border-radius: 50%;
+  margin-left: 6px;
 }
+
+.typing span {
+  width: 6px;
+  height: 6px;
+  background: #999;
+  border-radius: 50%;
+  display: inline-block;
+  animation: blink 1.4s infinite both;
+}
+
+.typing span:nth-child(2) { animation-delay: .2s }
+.typing span:nth-child(3) { animation-delay: .4s }
+
+@keyframes blink {
+  0% { opacity: .2 }
+  20% { opacity: 1 }
+  100% { opacity: .2 }
+}
+
+.hidden { display: none }
