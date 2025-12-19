@@ -62,4 +62,8 @@ window.send = async () => {
 
   await showTyping();
   addMsg("I’m here 🙂 tell me more.","bot");
+
+  window.addEventListener("beforeunload", async ()=>{
+  status.innerText = "last seen just now";
+});
 };
