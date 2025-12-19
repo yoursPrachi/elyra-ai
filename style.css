@@ -1,111 +1,163 @@
-* { box-sizing: border-box }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
 body {
   margin: 0;
-  background: #0b141a;
-  font-family: system-ui, -apple-system;
+  background: #111b21;
+  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
 }
 
 .app {
-  max-width: 430px;
+  max-width: 500px;
   height: 100vh;
   margin: auto;
   display: flex;
   flex-direction: column;
-  background: #efeae2;
+  background-color: #e5ddd5;
+  /* WhatsApp Doodle Background */
+  background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
+  background-blend-mode: overlay;
 }
 
-/* HEADER */
+/* --- PREMIUM HEADER --- */
 .topbar {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 12px;
+  gap: 12px;
+  padding: 10px 16px;
   background: #075e54;
   color: white;
+  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+  z-index: 10;
 }
 
-/* CHAT */
+.topbar img {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 1px solid rgba(255,255,255,0.2);
+}
+
+.topbar h4 { margin: 0; font-size: 16px; font-weight: 600; }
+.topbar small { opacity: 0.8; font-size: 12px; }
+
+/* --- CHAT AREA --- */
 main {
   flex: 1;
-  padding: 12px;
+  padding: 16px;
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px; /* Tight gaps like real apps */
+  scroll-behavior: smooth;
+}
+
+/* Message Bubble Animation */
+@keyframes messageIn {
+  from { opacity: 0; transform: translateY(10px) scale(0.95); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
 }
 
 .msg {
-  max-width: 75%;
-  padding: 10px 14px;
-  border-radius: 14px;
-  font-size: 14px;
+  max-width: 85%;
+  padding: 8px 12px;
+  font-size: 14.5px;
   position: relative;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.12);
+  line-height: 1.4;
+  animation: messageIn 0.2s ease-out forwards;
 }
 
 .user {
   align-self: flex-end;
   background: #dcf8c6;
+  border-radius: 12px 0 12px 12px; /* Chat tail effect */
+  margin-bottom: 2px;
 }
 
 .bot {
   align-self: flex-start;
   background: white;
+  border-radius: 0 12px 12px 12px;
+  margin-bottom: 2px;
 }
 
-/* EDIT MENU */
+/* --- FLOATING EDIT MENU --- */
 .menu {
   position: absolute;
-  top: -28px;
+  bottom: 100%;
   right: 0;
-  background: #333;
-  color: white;
-  font-size: 12px;
-  border-radius: 6px;
+  background: #ffffff;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  border-radius: 8px;
+  overflow: hidden;
+  z-index: 100;
   display: flex;
+  flex-direction: column;
+  animation: fadeIn 0.1s ease;
 }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .menu div {
-  padding: 6px 10px;
-  cursor: pointer;
+  padding: 10px 20px;
+  color: #333;
+  font-weight: 500;
+  border-bottom: 1px solid #eee;
 }
 
-/* INPUT */
+.menu div:last-child { border: none; color: #d32f2f; }
+
+/* --- MODERN INPUT BAR --- */
 .input-bar {
   display: flex;
-  padding: 10px;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
   background: #f0f2f5;
 }
 
 .input-bar input {
   flex: 1;
-  padding: 12px;
-  border-radius: 20px;
-  border: none;
+  padding: 12px 16px;
+  border-radius: 24px;
+  border: 1px solid #fff;
+  outline: none;
+  font-size: 15px;
+  background: white;
 }
 
 .input-bar button {
-  width: 44px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
-  background: #075e54;
+  background: #00a884;
   color: white;
   border: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: transform 0.1s;
 }
 
-/* TYPING */
+.input-bar button:active { transform: scale(0.9); }
+
+/* --- TYPING INDICATOR --- */
+.typing { padding: 10px 16px; display: flex; gap: 4px; }
 .typing span {
-  width: 6px;
-  height: 6px;
-  background: #999;
+  width: 7px;
+  height: 7px;
+  background: #919191;
   border-radius: 50%;
-  display: inline-block;
   animation: blink 1.4s infinite both;
 }
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }
 
-.hidden { display:none }
+.hidden { display: none !important; }
 
 @keyframes blink {
-  0%{opacity:.2}
-  20%{opacity:1}
-  100%{opacity:.2}
+  0%, 100% { opacity: 0.3; transform: scale(0.8); }
+  50% { opacity: 1; transform: scale(1); }
 }
