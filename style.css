@@ -1,163 +1,198 @@
-* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+/* 1. RESET & CORE SETTINGS */
+* { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+  -webkit-tap-highlight-color: transparent; 
+}
+
+:root {
+  --header-height: 65px;
+  --whatsapp-green: #075e54;
+  --bg-color: #e5ddd5;
+  --input-bg: #f0f2f5;
+}
 
 body {
-  margin: 0;
   background: #111b21;
   font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  overflow: hidden; /* Screen hilne se rokne ke liye */
 }
 
+/* 2. MAIN APP CONTAINER */
 .app {
-  max-width: 500px;
+  width: 100%;
+  max-width: 500px; /* Mobile width logic */
   height: 100vh;
-  margin: auto;
   display: flex;
   flex-direction: column;
-  background-color: #e5ddd5;
-  /* WhatsApp Doodle Background */
+  background-color: var(--bg-color);
   background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
   background-blend-mode: overlay;
+  position: relative;
 }
 
-/* --- PREMIUM HEADER --- */
+/* 3. FIXED HEADER (Ab ye nahi gayab hoga) */
 .topbar {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-height);
+  background: var(--whatsapp-green);
+  color: white;
   display: flex;
   align-items: center;
+  padding: 0 15px;
   gap: 12px;
-  padding: 10px 16px;
-  background: #075e54;
-  color: white;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-  z-index: 10;
+  z-index: 1000;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
 }
 
 .topbar img {
-  width: 40px;
-  height: 40px;
+  width: 42px;
+  height: 42px;
   border-radius: 50%;
-  object-fit: cover;
   border: 1px solid rgba(255,255,255,0.2);
 }
 
-.topbar h4 { margin: 0; font-size: 16px; font-weight: 600; }
-.topbar small { opacity: 0.8; font-size: 12px; }
+.topbar h4 {
+  font-size: 17px;
+  margin: 0;
+  font-weight: 600;
+}
 
-/* --- CHAT AREA --- */
+.topbar small {
+  font-size: 12px;
+  opacity: 0.85;
+}
+
+/* 4. CHAT AREA (Scrollable) */
 main {
   flex: 1;
-  padding: 16px;
+  padding: 15px;
+  padding-top: calc(var(--header-height) + 15px); /* Header ke niche space */
   overflow-y: auto;
   display: flex;
   flex-direction: column;
-  gap: 4px; /* Tight gaps like real apps */
+  gap: 6px;
   scroll-behavior: smooth;
 }
 
-/* Message Bubble Animation */
-@keyframes messageIn {
-  from { opacity: 0; transform: translateY(10px) scale(0.95); }
-  to { opacity: 1; transform: translateY(0) scale(1); }
+/* 5. MESSAGE BUBBLES */
+.msg {
+  max-width: 82%;
+  padding: 8px 12px;
+  font-size: 15px;
+  line-height: 1.4;
+  position: relative;
+  box-shadow: 0 1px 0.5px rgba(0,0,0,0.15);
+  animation: fadeIn 0.2s ease;
 }
 
-.msg {
-  max-width: 85%;
-  padding: 8px 12px;
-  font-size: 14.5px;
-  position: relative;
-  box-shadow: 0 1px 1px rgba(0,0,0,0.12);
-  line-height: 1.4;
-  animation: messageIn 0.2s ease-out forwards;
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(5px); }
+  to { opacity: 1; transform: translateY(0); }
 }
 
 .user {
   align-self: flex-end;
   background: #dcf8c6;
-  border-radius: 12px 0 12px 12px; /* Chat tail effect */
-  margin-bottom: 2px;
+  border-radius: 12px 0 12px 12px;
+  color: #000;
 }
 
 .bot {
   align-self: flex-start;
-  background: white;
+  background: #ffffff;
   border-radius: 0 12px 12px 12px;
-  margin-bottom: 2px;
+  color: #000;
 }
 
-/* --- FLOATING EDIT MENU --- */
+/* 6. EDIT/DELETE MENU */
 .menu {
   position: absolute;
-  bottom: 100%;
+  top: -40px;
   right: 0;
-  background: #ffffff;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  background: #333;
+  color: white;
   border-radius: 8px;
-  overflow: hidden;
-  z-index: 100;
   display: flex;
-  flex-direction: column;
-  animation: fadeIn 0.1s ease;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  z-index: 100;
 }
-
-@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
 .menu div {
-  padding: 10px 20px;
-  color: #333;
-  font-weight: 500;
-  border-bottom: 1px solid #eee;
+  padding: 8px 12px;
+  font-size: 12px;
+  cursor: pointer;
 }
 
-.menu div:last-child { border: none; color: #d32f2f; }
+.menu div:first-child { border-right: 1px solid #555; }
 
-/* --- MODERN INPUT BAR --- */
+/* 7. TYPING INDICATOR */
+.typing {
+  padding: 10px 20px;
+  display: flex;
+  gap: 4px;
+}
+
+.typing span {
+  width: 8px;
+  height: 8px;
+  background: #919191;
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out;
+}
+
+.typing span:nth-child(2) { animation-delay: 0.2s; }
+.typing span:nth-child(3) { animation-delay: 0.4s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
+  40% { transform: scale(1.1); opacity: 1; }
+}
+
+/* 8. INPUT BAR (Stick to bottom) */
 .input-bar {
+  background: var(--input-bg);
+  padding: 10px 12px;
   display: flex;
   align-items: center;
   gap: 8px;
-  padding: 8px 12px;
-  background: #f0f2f5;
+  z-index: 1000;
 }
 
 .input-bar input {
   flex: 1;
   padding: 12px 16px;
-  border-radius: 24px;
-  border: 1px solid #fff;
+  border-radius: 25px;
+  border: none;
+  font-size: 16px;
   outline: none;
-  font-size: 15px;
   background: white;
 }
 
 .input-bar button {
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
+  width: 48px;
+  height: 48px;
   background: #00a884;
   color: white;
   border: none;
+  border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
+  font-size: 20px;
   cursor: pointer;
-  transition: transform 0.1s;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-.input-bar button:active { transform: scale(0.9); }
-
-/* --- TYPING INDICATOR --- */
-.typing { padding: 10px 16px; display: flex; gap: 4px; }
-.typing span {
-  width: 7px;
-  height: 7px;
-  background: #919191;
-  border-radius: 50%;
-  animation: blink 1.4s infinite both;
+.input-bar button:active {
+  transform: scale(0.9);
 }
-.typing span:nth-child(2) { animation-delay: 0.2s; }
-.typing span:nth-child(3) { animation-delay: 0.4s; }
 
 .hidden { display: none !important; }
-
-@keyframes blink {
-  0%, 100% { opacity: 0.3; transform: scale(0.8); }
-  50% { opacity: 1; transform: scale(1); }
-}
