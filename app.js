@@ -1,19 +1,25 @@
-function sendMessage() {
-  const input = document.getElementById("userInput");
-  const text = input.value.trim();
-  if (!text) return;
+import { getSmartReply } from "./smartReply.js";
 
-  addMessage(text, "user");
+const chat = document.getElementById("chat");
+const input = document.getElementById("input");
+
+function add(text, type) {
+  const div = document.createElement("div");
+  div.className = `msg ${type}`;
+  div.innerText = text;
+  chat.appendChild(div);
+  chat.scrollTop = chat.scrollHeight;
+}
+
+window.sendMessage = async () => {
+  if (!input.value.trim()) return;
+  const txt = input.value;
   input.value = "";
 
-  setTimeout(() => {
-    addMessage("I'm learning… tell me more 😊", "bot");
-  }, 600);
-}
+  add(txt, "user");
 
-function addMessage(text, type) {
-  const msgDiv = document.createElement("div");
-  msgDiv.className = `msg ${type}`;
-  msgDiv.innerText = text;
-  document.getElementById("messages").appendChild(msgDiv);
-}
+  setTimeout(async () => {
+    const reply = await getSmartReply(txt);
+    add(reply, "bot");
+  }, 700);
+};
