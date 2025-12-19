@@ -9,7 +9,7 @@ const input = document.getElementById("input");
 const typing = document.getElementById("typing");
 const status = document.getElementById("status");
 
-// 1. Scroll Logic (Smooth Bottom Focus)
+// 1. Scroll Logic
 function scrollToBottom() {
   setTimeout(() => {
     chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' });
@@ -22,7 +22,6 @@ function addMsg(text, cls, docId = null) {
   const d = document.createElement("div");
   d.className = `msg ${cls}`;
   
-  // Realistic Structure: Text + Time + Blue Ticks for user
   d.innerHTML = `
     <span>${text}</span>
     <span class="time">
@@ -31,7 +30,6 @@ function addMsg(text, cls, docId = null) {
     </span>
   `;
 
-  // Edit/Delete on click for User
   if (cls === "user" && docId) {
     d.onclick = (e) => {
       e.stopPropagation();
@@ -51,13 +49,15 @@ input.addEventListener("keypress", (e) => {
   }
 });
 
-// 4. SEND FUNCTION
+// 4. SEND FUNCTION (Updated for Auto-Keyboard Hide)
 window.send = async () => {
   const text = input.value.trim();
   if (!text) return;
 
   input.value = "";
-  input.focus(); // Keeps keyboard active on mobile
+  
+  // --- KEYBOARD HIDE LOGIC ---
+  input.blur(); // Ye line message bhejte hi keyboard ko gayab kar degi
 
   try {
     const ref = await addDoc(
@@ -93,30 +93,24 @@ function showMenu(el, id) {
     <div onclick="delMsg('${id}')">🗑️ Delete</div>`;
   el.appendChild(m);
   
-  // Close menu if user clicks anywhere else
   document.addEventListener('click', () => m.remove(), { once: true });
 }
 
-// Global Actions for Menu
 window.editMsg = async (id) => {
   const t = prompt("Edit your message:");
   if (t && t.trim() !== "") {
     await updateDoc(doc(db, "chats", "user", "messages", id), { text: t });
-    alert("Message updated! Refresh to see changes.");
+    location.reload();
   }
 };
 
 window.delMsg = async (id) => {
   if (confirm("Delete this message permanently?")) {
     await deleteDoc(doc(db, "chats", "user", "messages", id));
-    alert("Message deleted.");
+    location.reload();
   }
 };
 
-// 6. ONLINE STATUS LOGIC
 window.addEventListener("beforeunload", () => {
   status.innerText = "last seen just now";
 });
-
-// App Start Focus
-window.onload = () => input.focus();
