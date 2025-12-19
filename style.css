@@ -1,198 +1,101 @@
-/* 1. RESET & CORE SETTINGS */
+/* 1. RESET & KEYBOARD COMPATIBILITY */
 * { 
   box-sizing: border-box; 
   margin: 0; 
   padding: 0; 
-  -webkit-tap-highlight-color: transparent; 
 }
 
-:root {
-  --header-height: 65px;
-  --whatsapp-green: #075e54;
-  --bg-color: #e5ddd5;
-  --input-bg: #f0f2f5;
-}
-
-body {
-  background: #111b21;
-  font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
-  height: 100vh;
-  display: flex;
-  justify-content: center;
-  overflow: hidden; /* Screen hilne se rokne ke liye */
-}
-
-/* 2. MAIN APP CONTAINER */
-.app {
+html, body {
+  height: 100%;
   width: 100%;
-  max-width: 500px; /* Mobile width logic */
-  height: 100vh;
+  overflow: hidden; /* Screen ko bounce hone se rokta hai */
+  background: #111b21;
+}
+
+/* 2. MAIN CONTAINER (The Secret Sauce) */
+.app {
   display: flex;
   flex-direction: column;
-  background-color: var(--bg-color);
+  /* Mobile keyboard open hone par ye height auto-adjust hogi */
+  height: 100dvh; 
+  max-width: 500px;
+  margin: auto;
+  background-color: #e5ddd5;
   background-image: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
   background-blend-mode: overlay;
   position: relative;
 }
 
-/* 3. FIXED HEADER (Ab ye nahi gayab hoga) */
+/* 3. HEADER (Z-Index important hai) */
 .topbar {
-  position: absolute;
-  top: 0;
-  left: 0;
-  right: 0;
-  height: var(--header-height);
-  background: var(--whatsapp-green);
+  height: 60px;
+  background: #075e54;
   color: white;
   display: flex;
   align-items: center;
-  padding: 0 15px;
+  padding: 0 16px;
   gap: 12px;
-  z-index: 1000;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.2);
+  flex-shrink: 0;
+  z-index: 10;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
 }
 
-.topbar img {
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  border: 1px solid rgba(255,255,255,0.2);
-}
+.topbar img { width: 40px; height: 40px; border-radius: 50%; }
 
-.topbar h4 {
-  font-size: 17px;
-  margin: 0;
-  font-weight: 600;
-}
-
-.topbar small {
-  font-size: 12px;
-  opacity: 0.85;
-}
-
-/* 4. CHAT AREA (Scrollable) */
+/* 4. CHAT AREA (Ismein hi scroll hoga) */
 main {
-  flex: 1;
-  padding: 15px;
-  padding-top: calc(var(--header-height) + 15px); /* Header ke niche space */
+  flex: 1; 
   overflow-y: auto;
+  padding: 15px;
   display: flex;
   flex-direction: column;
-  gap: 6px;
-  scroll-behavior: smooth;
+  gap: 8px;
+  /* Scroll smooth karne ke liye */
+  -webkit-overflow-scrolling: touch; 
 }
 
-/* 5. MESSAGE BUBBLES */
+/* 5. MESSAGES */
 .msg {
-  max-width: 82%;
+  max-width: 80%;
   padding: 8px 12px;
   font-size: 15px;
-  line-height: 1.4;
-  position: relative;
-  box-shadow: 0 1px 0.5px rgba(0,0,0,0.15);
-  animation: fadeIn 0.2s ease;
+  border-radius: 12px;
+  box-shadow: 0 1px 1px rgba(0,0,0,0.1);
 }
+.user { align-self: flex-end; background: #dcf8c6; border-top-right-radius: 2px; }
+.bot { align-self: flex-start; background: #ffffff; border-top-left-radius: 2px; }
 
-@keyframes fadeIn {
-  from { opacity: 0; transform: translateY(5px); }
-  to { opacity: 1; transform: translateY(0); }
-}
-
-.user {
-  align-self: flex-end;
-  background: #dcf8c6;
-  border-radius: 12px 0 12px 12px;
-  color: #000;
-}
-
-.bot {
-  align-self: flex-start;
-  background: #ffffff;
-  border-radius: 0 12px 12px 12px;
-  color: #000;
-}
-
-/* 6. EDIT/DELETE MENU */
-.menu {
-  position: absolute;
-  top: -40px;
-  right: 0;
-  background: #333;
-  color: white;
-  border-radius: 8px;
-  display: flex;
-  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
-  z-index: 100;
-}
-
-.menu div {
-  padding: 8px 12px;
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.menu div:first-child { border-right: 1px solid #555; }
-
-/* 7. TYPING INDICATOR */
-.typing {
-  padding: 10px 20px;
-  display: flex;
-  gap: 4px;
-}
-
-.typing span {
-  width: 8px;
-  height: 8px;
-  background: #919191;
-  border-radius: 50%;
-  animation: bounce 1.4s infinite ease-in-out;
-}
-
-.typing span:nth-child(2) { animation-delay: 0.2s; }
-.typing span:nth-child(3) { animation-delay: 0.4s; }
-
-@keyframes bounce {
-  0%, 80%, 100% { transform: scale(0.6); opacity: 0.4; }
-  40% { transform: scale(1.1); opacity: 1; }
-}
-
-/* 8. INPUT BAR (Stick to bottom) */
+/* 6. INPUT BAR (Most Critical Part) */
 .input-bar {
-  background: var(--input-bg);
+  background: #f0f2f5;
   padding: 10px 12px;
   display: flex;
   align-items: center;
   gap: 8px;
-  z-index: 1000;
+  flex-shrink: 0; /* Keyboard isko daba na sake */
+  border-top: 1px solid #ddd;
 }
 
 .input-bar input {
   flex: 1;
   padding: 12px 16px;
-  border-radius: 25px;
-  border: none;
-  font-size: 16px;
+  border-radius: 24px;
+  border: 1px solid #ccc;
+  font-size: 16px; /* 16px se kam pe iPhone zoom kar deta hai, isliye 16px best hai */
   outline: none;
   background: white;
+  /* Touch focus allow karne ke liye */
+  pointer-events: auto !important; 
 }
 
 .input-bar button {
-  width: 48px;
-  height: 48px;
+  width: 45px;
+  height: 45px;
   background: #00a884;
   color: white;
   border: none;
   border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 20px;
-  cursor: pointer;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
-}
-
-.input-bar button:active {
-  transform: scale(0.9);
+  flex-shrink: 0;
 }
 
 .hidden { display: none !important; }
