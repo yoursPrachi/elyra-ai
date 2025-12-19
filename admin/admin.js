@@ -58,6 +58,13 @@ window.trainBot = async (id, q) => {
   }
 };
 
+// admin.js mein query ko update karein
+import { orderBy } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+
+const q = query(collection(db, "learningQueue"), orderBy("count", "desc"));
+
+
+
 window.ignoreQ = async (id) => {
   if (confirm("Delete this?")) {
     await deleteDoc(doc(db, "learningQueue", id));
