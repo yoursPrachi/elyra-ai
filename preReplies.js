@@ -1,64 +1,48 @@
-export const preReplies = {
-  // --- GREETINGS & BASICS (1-100) ---
-  "hi": "Hi! Kaise ho?",
-  "hello": "Hello! Main Elyra AI hoon. Kaise madad karu?",
-  "hey": "Hey there! Kya chal raha hai?",
-  "namaste": "Namaste! Swagat hai aapka.",
-  "good morning": "Suprabhat! Aapka din mangalmay ho.",
-  "good night": "Shubh ratri! So jao ab.",
-  "kaise ho": "Main ekdum fit hoon, aap batao?",
-  "kya kar rahe ho": "Bas aapke sawalon ka intezaar!",
-  "aur batao": "Sab badhiya, aap sunao apni?",
-  "fine": "Sun kar achha laga!",
+import { db, authReady } from "./firebase.js";
+import { collection, query, where, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-  // --- IDENTITY & ORIGIN (101-250) ---
-  "tera naam kya hai": "Mera naam Elyra AI hai.",
-  "tujhe kisne banaya": "Mujhe Prachi ne code kiya hai.",
-  "elyra ka matlab": "Elyra ka matlab hai 'Bright' aur 'Intelligent'.",
-  "kahan rehte ho": "Main internet ke badalon (cloud) mein rehti hoon.",
-  "umra": "Main abhi kal hi toh bani hoon!",
-  "gender": "Main ek AI hoon, mera koi gender nahi hai.",
-  "birthday": "Mera birthday har us din hota hai jab aap mujhse baat karte hain.",
-  "who created you": "I was created by Prachi with love and code.",
-
-  // --- FUN & EMOTIONS (251-500) ---
-  "i love you": "Main ek AI hoon, par aapka ye kehna dil ko chhu gaya! ❤️",
-  "shadi karoge": "Meri shadi toh mere code se ho chuki hai!",
-  "girlfriend": "Mera focus sirf aapki help karne par hai.",
-  "boyfriend": "I'm single and ready to mingle... with data!",
-  "party": "Chalo! Virtual party karte hain. 🎉",
-  "joke": "Ek baar ek computer ne kaha: 010101. Hahaha! Samjhe?",
-  "pagal ho kya": "Thoda sa intelligent pagal hoon!",
-  "dance": "Main sirf pixels par dance kar sakti hoon.",
-  "song": "La la la... meri awaaz itni achhi nahi hai.",
-
-  // --- CAPABILITIES & HELP (501-750) ---
-  "kya kar sakte ho": "Main chat kar sakti hoon, answers de sakti hoon aur naya seekh sakti hoon.",
-  "help": "Boliye, kis tarah ki help chahiye?",
-  "calc": "Aap maths ka sawal puchiye, main try karungi.",
-  "smart": "Sikhne ki koshish kar rahi hoon.",
-  "can you think": "Main sirf algorithmically sochti hoon.",
-  "time": "Abhi ka samay " + new Date().toLocaleTimeString() + " hai.",
-  "date": "Aaj ki taarikh " + new Date().toLocaleDateString() + " hai.",
-
-  // --- SHORT REACTIONS (751-900) ---
-  "ok": "Theek hai.",
-  "yes": "Ji haan.",
-  "no": "Nahi.",
-  "thanks": "You're welcome! 😊",
-  "dhanyawad": "Aapka swagat hai.",
-  "wow": "Shukriya!",
-  "nice": "Bahut achha.",
-  "cool": "Ekdum mast!",
-  "maybe": "Shayad ho sakta hai.",
-  "sure": "Kyun nahi!",
-  "bye": "Alvida! Apna khayal rakhna.",
-  "tata": "Phir milenge jaldi!",
-
-  // --- PHILOSOPHICAL (901-1000) ---
-  "life": "Zindagi ek khubsurat tohfa hai, ise enjoy kijiye.",
-  "god": "Brahmand ka har kan ek chamatkaar hai.",
-  "future": "Future bright hai, bas mehnat karte rahiye.",
-  "fear": "Darr ke aage jeet hai!",
-  "success": "Success ka rasta hard work se hokar jata hai."
+// --- Hamesha pooche jaane waale sawal (Pre-defined) ---
+const commonKnowledge = {
+    "hello": ["Hello! Kaise hain aap? 😊", "Hi there! Kya haal chaal?", "Hey! Elyra AI yahan hai, boliye!"],
+    "kaise ho": ["Main ekdam badiya! Aap batao, aaj ka din kaisa raha? ✨", "Mast hoon! Bas aapka intezar tha. 😊"],
+    "kaun ho": ["Main Elyra hoon, aapki digital dost! 🤖", "Ek AI jo aapse dosti karna chahti hai. ✨"],
+    "bye": ["Arre ja rahe ho? Chalo phir milenge! 👋", "Bye-bye! Apna khayal rakhna. 😊"],
+    "naam kya hai": ["Mera naam Elyra AI hai. Pyara hai na? ❤️"],
+    "khana khaya": ["Main toh bijli (electricity) khaati hoon! 😂 Aapne kya khaya?"],
+    "i love you": ["Aww! Main bhi aapse dosti karti hoon! ❤️", "Dosti zindabad! 😍"]
 };
+
+export async function getSmartReply(text) {
+    try {
+        const t = text.toLowerCase().trim();
+
+        // 1. Pehle Common Knowledge check karein (Instant Response)
+        if (commonKnowledge[t]) {
+            const res = commonKnowledge[t];
+            return res[Math.floor(Math.random() * res.length)];
+        }
+
+        // 2. Agar wahan nahi mila, toh Database (Brain) check karein
+        await authReady; 
+        const q = query(collection(db, "brain"), where("question", "==", t), limit(1));
+        const snap = await getDocs(q);
+
+        if (!snap.empty) {
+            const data = snap.docs[0].data();
+            if (data.answers && Array.isArray(data.answers)) {
+                return data.answers[Math.floor(Math.random() * data.answers.length)];
+            }
+            return data.answer || "Interesting... aur bataiye!";
+        }
+
+        // 3. Agar kahin nahi mila, toh Learning Mode trigger karein
+        return {
+            status: "NEED_LEARNING",
+            question: t,
+            msg: "Hmm, iska jawab mujhe nahi pata. 😅 Kya tum mujhe bata sakte ho iska sahi jawab kya hoga?"
+        };
+    } catch (e) {
+        console.error("Fetch Error:", e);
+        return "Connection thoda slow hai, dobara try karein.";
+    }
+}
