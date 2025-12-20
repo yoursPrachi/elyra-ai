@@ -9,6 +9,8 @@ const typing = document.getElementById("typing");
 let isLearning = false;
 let pendingQuestion = "";
 
+const starters = ["Aur batao, kya chal raha hai? 😊", "Wese aaj ka din kaisa raha?", "Acha, aur kuch naya? 🤔"];
+
 function addMsg(text, cls) {
     const d = document.createElement("div");
     d.className = `msg ${cls}`;
@@ -26,39 +28,37 @@ window.send = async () => {
     input.value = "";
     addMsg(text, "user");
 
-    // --- 1. LEARNING MODE HANDLER ---
-    if (isLearning === true) {
+    // --- AGAR BOT SEEKH RAHA HAI (Priority 1) ---
+    if (isLearning) {
         typing.classList.remove("hidden");
         try {
-            // User ka sikhaya jawab save karein
             await addDoc(collection(db, "temp_learning"), {
                 question: pendingQuestion,
                 answer: text.toLowerCase(),
-                timestamp: serverTimestamp()
+                timestamp: serverTimestamp(),
+                count: 1
             });
             
             setTimeout(() => {
                 typing.classList.add("hidden");
-                addMsg(`Wah! Maine yaad kar liya. Sikhane ke liye thnx! 😍 Aur batao, kya chal raha hai?`, "bot");
-                // IMPORTANT: Yahan flag reset ho raha hai
-                isLearning = false; 
+                const followUp = starters[Math.floor(Math.random() * starters.length)];
+                addMsg(`Wah! Maine yaad kar liya. Sikhane ke liye thnx! 😍\n\n${followUp}`, "bot");
+                isLearning = false; // State reset
                 pendingQuestion = "";
             }, 1000);
-        } catch (e) {
-            console.error(e);
-            addMsg("Oh no! Connection error ki wajah se save nahi hua.", "bot");
-            isLearning = false;
+        } catch (e) { 
+            console.error("Save Error:", e);
+            addMsg("Connectivity issue, save nahi ho paya.", "bot");
         }
-        return; // Aage ka search bypass karein
+        return; 
     }
 
-    // --- 2. NORMAL SEARCH HANDLER ---
+    // --- NORMAL CHAT (Priority 2) ---
     typing.classList.remove("hidden");
     const botReply = await getSmartReply(text);
 
     setTimeout(() => {
         typing.classList.add("hidden");
-        // Check karein ki bot ko jawab pata hai ya seekhna hai
         if (typeof botReply === "object" && botReply.status === "NEED_LEARNING") {
             isLearning = true;
             pendingQuestion = botReply.question;
@@ -69,5 +69,4 @@ window.send = async () => {
     }, 1200);
 };
 
-// Enter Key Support
 input.addEventListener("keypress", (e) => { if (e.key === "Enter") window.send(); });
