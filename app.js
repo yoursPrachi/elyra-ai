@@ -16,14 +16,14 @@ let repeatCount = 0;
 let isLearning = false;
 let pendingQuestion = "";
 
-// 1. Scroll Logic
+// 1. Scroll to Bottom
 function scrollToBottom() {
   setTimeout(() => {
     chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' });
   }, 100);
 }
 
-// 2. UI Message Logic
+// 2. Add Message to UI
 function addMsg(text, cls, docId = null) {
   const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const d = document.createElement("div");
@@ -47,7 +47,7 @@ function addMsg(text, cls, docId = null) {
   scrollToBottom();
 }
 
-// 3. Community Learning: Save Answer Logic
+// 3. Save User-Taught Answer Logic
 async function saveLearnedAnswer(q, a) {
   const tAnswer = a.toLowerCase().trim();
   const learningRef = collection(db, "temp_learning");
@@ -86,18 +86,33 @@ window.send = async () => {
   const text = input.value.trim();
   if (!text) return;
 
-  // A. IF IN LEARNING MODE
+  // --- A. HANDLING LEARNING MODE (The Fix for Flow) ---
   if (isLearning) {
     input.value = "";
     addMsg(text, "user");
+    
+    // Background saving
     await saveLearnedAnswer(pendingQuestion, text);
-    addMsg("Shukriya! 😍 Maine seekh liya hai. Jab 3 log yahi jawab denge, main ise hamesha yaad rakhungi.", "bot");
-    isLearning = false;
-    pendingQuestion = "";
+    
+    typing.classList.remove("hidden");
+    setTimeout(() => {
+      typing.classList.add("hidden");
+      
+      const successMsgs = [
+        "Wah! Ye toh mujhe pata hi nahi tha. Maine yaad kar liya! 😍 Aur batao, kya chal raha hai?",
+        "Shukriya sikhane ke liye! Aap kaafi smart ho. 😎 Wese aur kuch naya hai?",
+        "Done! Maine note kar liya. Agli baar koi puchega toh yahi bolungi. ✨ Chalo, ab kuch aur baatein karte hain!",
+        "Interesting! Aapka sikhaya hua jawab Maine save kar liya hai. 📝 Kuch aur puchenge?"
+      ];
+      
+      addMsg(successMsgs[Math.floor(Math.random() * successMsgs.length)], "bot");
+      isLearning = false;
+      pendingQuestion = "";
+    }, 1000);
     return;
   }
 
-  // B. SPAM CHECK
+  // --- B. SPAM CHECK ---
   if (text.toLowerCase() === lastUserMsg.toLowerCase()) {
     repeatCount++;
   } else {
@@ -106,17 +121,17 @@ window.send = async () => {
   }
 
   input.value = "";
-  input.blur(); // Keyboard auto-hide
+  input.blur();
 
   try {
-    // Save User Msg
+    // Save Message to History
     const ref = await addDoc(
       collection(db, "chats", "user", "messages"),
       { text, createdAt: serverTimestamp() }
     );
     addMsg(text, "user", ref.id);
 
-    // C. ROAST IF SPAMMED
+    // --- C. ROAST ON SPAM ---
     if (repeatCount >= 3) {
       typing.classList.remove("hidden");
       setTimeout(() => {
@@ -131,14 +146,13 @@ window.send = async () => {
       return;
     }
 
-    // D. SMART BOT REPLY
+    // --- D. GET BOT REPLY ---
     typing.classList.remove("hidden");
     const botReply = await getSmartReply(text);
     
     setTimeout(() => {
       typing.classList.add("hidden");
 
-      // Check if reply is Object (Learning Mode) or String
       if (typeof botReply === 'object' && botReply !== null) {
         if (botReply.type === "LEARNING_MODE") {
           isLearning = true;
@@ -155,7 +169,7 @@ window.send = async () => {
   }
 };
 
-// 5. ADDITIONAL UI LOGIC
+// 5. UTILITY FUNCTIONS
 input.addEventListener("keypress", (e) => {
   if (e.key === "Enter") { e.preventDefault(); window.send(); }
 });
