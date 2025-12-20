@@ -3,6 +3,34 @@ import { collection, getDocs, deleteDoc, doc, addDoc, updateDoc, serverTimestamp
 
 const pendingTable = document.getElementById("pending-table");
 
+// --- Admin Direct Upload Function ---
+window.adminUpload = async () => {
+    const q = document.getElementById("admin-q").value.trim();
+    const a = document.getElementById("admin-a").value.trim();
+
+    if (!q || !a) {
+        return alert("Bhai, sawal aur jawab dono likhna zaroori hai! 🙄");
+    }
+
+    try {
+        await addDoc(collection(db, "brain"), {
+            question: q.toLowerCase(),
+            answer: a,
+            status: "admin_added",
+            timestamp: serverTimestamp()
+        });
+        
+        // Inputs khali karein
+        document.getElementById("admin-q").value = "";
+        document.getElementById("admin-a").value = "";
+        
+        alert("Done! Elyra ab ye naya sawal seekh gayi hai. ✅");
+    } catch (e) {
+        alert("Upload fail ho gaya: " + e.message);
+    }
+};
+
+
 // --- Data Fetch Karein ---
 async function loadPendingData() {
     pendingTable.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
