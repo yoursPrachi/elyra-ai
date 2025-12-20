@@ -3,33 +3,35 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elyra Admin - One Click Approval</title>
+    <title>Elyra Admin - Pro Dashboard</title>
     <style>
-        :root { --primary: #075e54; --secondary: #25d366; --danger: #e74c3c; }
+        :root { --primary: #075e54; --secondary: #25d366; }
         body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
-        .header { background: var(--primary); color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
-        .card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); border-left: 5px solid var(--primary); }
-        .a-input { width: 100%; padding: 12px; border: 1px solid #ccc; border-radius: 8px; font-size: 15px; margin: 10px 0; outline: none; }
-        .btn-group { display: flex; gap: 10px; margin-top: 10px; }
-        button { flex: 1; padding: 12px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; }
-        .approve-btn { background: var(--secondary); }
-        .delete-btn { background: var(--danger); }
-        .load-btn { background: #3498db; width: 100%; margin-bottom: 15px; }
-        .pending-card { background: #fff; padding: 15px; border-radius: 10px; margin-bottom: 15px; border: 1px solid #ddd; box-shadow: 0 2px 4px rgba(0,0,0,0.05); }
-        .q-tag { color: var(--primary); font-weight: bold; font-size: 14px; }
+        .header { background: var(--primary); color: white; padding: 15px; border-radius: 8px; text-align: center; }
+        .card { background: white; border-radius: 10px; padding: 15px; margin-top: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        textarea { width: 100%; height: 150px; padding: 10px; border-radius: 8px; border: 1px solid #ccc; margin-top: 10px; font-family: monospace; }
+        button { padding: 12px 20px; border: none; border-radius: 8px; color: white; cursor: pointer; font-weight: bold; margin-top: 10px; }
+        .bulk-btn { background: var(--secondary); width: 100%; }
+        .pending-card { background: white; padding: 15px; border-radius: 10px; margin-bottom: 10px; border-left: 5px solid var(--primary); }
+        .a-input { width: 100%; padding: 10px; margin: 5px 0; border: 1px solid #ddd; border-radius: 5px; }
     </style>
 </head>
 <body>
 
 <div class="header">
-    <h2>Elyra AI Dashboard</h2>
-    <p>Review & Approve Learning</p>
+    <h2>Elyra AI - Admin Pro</h2>
 </div>
 
-<button class="load-btn" onclick="location.reload()">🔄 Refresh New Data</button>
+<div class="card">
+    <h3>🚀 Mass Upload (Bulk Data)</h3>
+    <p style="font-size: 12px; color: #666;">Format: Sawal | Jawab (Ek line mein ek)</p>
+    <textarea id="bulkData" placeholder="Hello | Hi, kaise ho?&#10;Kaun ho | Main Elyra AI hoon!"></textarea>
+    <button class="bulk-btn" onclick="massUpload()">Upload All to Brain</button>
+</div>
 
-<div id="review-container">
-    <p style="text-align: center; color: #999;">Checking database...</p>
+<div class="card">
+    <h3>⏳ Pending Reviews</h3>
+    <div id="review-container">Loading...</div>
 </div>
 
 <script type="module" src="admin.js"></script>
