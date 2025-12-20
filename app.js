@@ -5,76 +5,27 @@ import { collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, 
 const chat = document.getElementById("chat");
 const input = document.getElementById("input");
 const typing = document.getElementById("typing");
-const container = document.getElementById("app-container");
 
 let isLearning = false;
 let pendingQuestion = "";
 
-// --- Conversational Starters ---
-const conversationStarters = [
-    "Wese, tumhari pasandida movie kaunsi hai? ✨",
-    "Chalo ye batao, aaj ka din kaisa guzra? 😊",
-    "Tumhe music sunna pasand hai? Main toh hamesha sunti hoon! 🎵",
-    "Mera dimaag toh digital hai, par tumhara dimaag kya soch raha hai? 😂",
-    "Interesting! Wese aur kuch naya puchenge? 🤔"
-];
+const starters = ["Aur batao, kya chal raha hai? 😊", "Wese aaj ka din kaisa raha?", "Interesting! Kuch aur puchenge? 🤔"];
 
-function scrollToBottom() {
-    chat.scrollTop = chat.scrollHeight;
-}
-
-// --- UI Message Function (Time and Ticks outside text) ---
 function addMsg(text, cls) {
     const d = document.createElement("div");
     d.className = `msg ${cls}`;
-    
-    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const ticks = cls === 'user' ? '<span class="ticks">✓✓</span>' : '';
-
-    // Message Content aur Time alag-alag div mein (WhatsApp Style)
-    d.innerHTML = `
-        <div class="msg-content">${text}</div>
-        <div class="time">${timeStr} ${ticks}</div>
-    `;
-
+    d.innerHTML = `<div>${text}</div><div class="time">${time} ${ticks}</div>`;
     chat.appendChild(d);
-    scrollToBottom();
+    chat.scrollTop = chat.scrollHeight;
 }
 
-// --- Save Learned Answer Logic ---
 async function saveLearnedAnswer(q, a) {
-    try {
-        const tAnswer = a.toLowerCase().trim();
-        const learningRef = collection(db, "temp_learning");
-        const qry = query(learningRef, where("question", "==", q), where("answer", "==", tAnswer));
-        const snap = await getDocs(qry);
-
-        if (!snap.empty) {
-            const docData = snap.docs[0];
-            const newCount = (docData.data().count || 1) + 1;
-            if (newCount >= 3) {
-                await addDoc(collection(db, "brain"), { 
-                    question: q, 
-                    answer: a, 
-                    type: "community", 
-                    time: serverTimestamp() 
-                });
-                await deleteDoc(doc(db, "temp_learning", docData.id));
-            } else {
-                await updateDoc(doc(db, "temp_learning", docData.id), { count: newCount });
-            }
-        } else {
-            await addDoc(learningRef, { 
-                question: q, 
-                answer: tAnswer, 
-                count: 1, 
-                time: serverTimestamp() 
-            });
-        }
-    } catch (e) { console.error("Firebase Save Error:", e); }
+    const tAnswer = a.toLowerCase().trim();
+    await addDoc(collection(db, "temp_learning"), { question: q, answer: tAnswer, count: 1, time: serverTimestamp() });
 }
 
-// --- MAIN SEND FUNCTION ---
 window.send = async () => {
     const text = input.value.trim();
     if (!text) return;
@@ -82,66 +33,27 @@ window.send = async () => {
     input.value = "";
     addMsg(text, "user");
 
-    // 1. Handling Learning Mode (User is teaching)
     if (isLearning) {
         typing.classList.remove("hidden");
-        
-        // Background mein save karein
         await saveLearnedAnswer(pendingQuestion, text);
-        
         setTimeout(() => {
             typing.classList.add("hidden");
-            const starter = conversationStarters[Math.floor(Math.random() * conversationStarters.length)];
-            
-            // Ab bot "I don't know" nahi bolega, balki khush hoga
-            addMsg(`Wah! Ye toh bahut sahi jawab hai. Maine yaad kar liya! 😍\n\n${starter}`, "bot");
-            
+            addMsg(`Wah! Maine yaad kar liya. 😍 ${starters[Math.floor(Math.random()*starters.length)]}`, "bot");
             isLearning = false;
-            pendingQuestion = "";
         }, 1200);
-        return; // Normal search bypass karein
+        return;
     }
 
-    // 2. Normal Chat Mode
     typing.classList.remove("hidden");
-    try {
-        const botReply = await getSmartReply(text);
-        
-        setTimeout(() => {
-            typing.classList.add("hidden");
-            
-            if (typeof botReply === "object" && botReply !== null) {
-                // Jab bot ko jawab nahi pata toh Learning Mode ON
-                isLearning = true;
-                pendingQuestion = botReply.question;
-                addMsg(botReply.msg, "bot");
-            } else {
-                // Normal Reply + 20% chance of Follow-up to keep flow alive
-                let finalMsg = botReply;
-                if (Math.random() > 0.8) {
-                    finalMsg += "\n\n" + conversationStarters[Math.floor(Math.random() * conversationStarters.length)];
-                }
-                addMsg(finalMsg, "bot");
-            }
-        }, 1200);
-    } catch (e) {
+    const botReply = await getSmartReply(text);
+    setTimeout(() => {
         typing.classList.add("hidden");
-        console.error("Reply Error:", e);
-    }
+        if (typeof botReply === "object") {
+            isLearning = true;
+            pendingQuestion = botReply.question;
+            addMsg(botReply.msg, "bot");
+        } else {
+            addMsg(botReply, "bot");
+        }
+    }, 1200);
 };
-
-// --- Mobile Keyboard Fix ---
-if (window.visualViewport) {
-    window.visualViewport.addEventListener("resize", () => {
-        container.style.height = `${window.visualViewport.height}px`;
-        scrollToBottom();
-    });
-}
-
-// Enter Key Support
-input.addEventListener("keypress", (e) => { 
-    if (e.key === "Enter") {
-        e.preventDefault();
-        window.send(); 
-    }
-});
