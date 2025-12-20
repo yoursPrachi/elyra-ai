@@ -9,82 +9,96 @@ const typing = document.getElementById("typing");
 let isLearning = false;
 let pendingQuestion = "";
 
-// --- Auto Scroll Logic ---
+// Follow-up questions to keep conversation alive
+const followUps = [
+    "Wese, aur kya chal raha hai? 😊",
+    "Tumhe mere sath baat karna kaisa lag raha hai?",
+    "Acha, aaj ka din kaisa raha tumhara? ✨",
+    "Chalo ye batao, tumhari fav cheez kya hai?",
+    "Interesting! Wese aur kuch puchenge?"
+];
+
 function scrollToBottom() {
-  chat.scrollTop = chat.scrollHeight;
+    chat.scrollTop = chat.scrollHeight;
 }
 
-// --- WhatsApp Style Message ---
 function addMsg(text, cls) {
-  const d = document.createElement("div");
-  d.className = `msg ${cls}`;
-  d.innerHTML = `<span>${text}</span><div class="time">${new Date().toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})} ${cls === 'user' ? '✓✓' : ''}</div>`;
-  chat.appendChild(d);
-  scrollToBottom();
+    const d = document.createElement("div");
+    d.className = `msg ${cls}`;
+    d.innerText = text;
+    chat.appendChild(d);
+    scrollToBottom();
 }
 
-// --- Smart Follow-up Questions ---
-function getFollowUp() {
-  const questions = [
-    "Wese, aaj kal tumhara mood kaisa hai? 😊",
-    "Aur batao, aaj kuch khaas kiya kya?",
-    "Chalo ye toh theek hai, par tumhara fav hobby kya hai? ✨",
-    "Mujhe lagta hai tum kaafi interesting ho. Kuch aur baatein karein?",
-    "Wese tum kahan se ho? Main toh internet pe rehti hoon! 😂"
-  ];
-  return questions[Math.floor(Math.random() * questions.length)];
+async function saveLearnedAnswer(q, a) {
+    const tAnswer = a.toLowerCase().trim();
+    const learningRef = collection(db, "temp_learning");
+    const qry = query(learningRef, where("question", "==", q), where("answer", "==", tAnswer));
+    const snap = await getDocs(qry);
+
+    if (!snap.empty) {
+        const docData = snap.docs[0];
+        const newCount = (docData.data().count || 1) + 1;
+        if (newCount >= 3) {
+            await addDoc(collection(db, "brain"), { question: q, answer: a, type: "community", time: serverTimestamp() });
+            await deleteDoc(doc(db, "temp_learning", docData.id));
+        } else {
+            await updateDoc(doc(db, "temp_learning", docData.id), { count: newCount });
+        }
+    } else {
+        await addDoc(learningRef, { question: q, answer: tAnswer, count: 1, time: serverTimestamp() });
+    }
 }
 
 window.send = async () => {
-  const text = input.value.trim();
-  if (!text) return;
+    const text = input.value.trim();
+    if (!text) return;
 
-  input.value = "";
-  addMsg(text, "user");
+    input.value = "";
+    addMsg(text, "user");
 
-  // --- Handling Learning Mode Answer ---
-  if (isLearning) {
-    // Save to temp_learning in background
-    saveLearnedAnswer(pendingQuestion, text); 
-    
-    typing.classList.remove("hidden");
-    setTimeout(() => {
-      typing.classList.add("hidden");
-      // Flow maintain karne ke liye reply + follow up
-      const reply = `Wah! Maine yaad kar liya. 😍 ${getFollowUp()}`;
-      addMsg(reply, "bot");
-      isLearning = false;
-      pendingQuestion = "";
-    }, 1000);
-    return;
-  }
-
-  // --- Normal Chat Mode ---
-  typing.classList.remove("hidden");
-  const botReply = await getSmartReply(text);
-
-  setTimeout(() => {
-    typing.classList.add("hidden");
-    
-    if (typeof botReply === "object" && botReply !== null) {
-      isLearning = true;
-      pendingQuestion = botReply.question;
-      addMsg(botReply.msg, "bot");
-    } else {
-      // 20% chances ki bot normal reply ke baad bhi follow-up pooche
-      let finalMsg = botReply;
-      if (Math.random() > 0.8) finalMsg += ` ${getFollowUp()}`;
-      addMsg(finalMsg, "bot");
+    // --- Learning Mode Handler ---
+    if (isLearning) {
+        typing.classList.remove("hidden");
+        await saveLearnedAnswer(pendingQuestion, text);
+        
+        setTimeout(() => {
+            typing.classList.add("hidden");
+            const randomFollow = followUps[Math.floor(Math.random() * followUps.length)];
+            addMsg(`Shukriya! Maine yaad kar liya. 😍 ${randomFollow}`, "bot");
+            isLearning = false;
+            pendingQuestion = "";
+        }, 1000);
+        return;
     }
-  }, 1200);
+
+    // --- Normal Mode Handler ---
+    typing.classList.remove("hidden");
+    const botReply = await getSmartReply(text);
+
+    setTimeout(() => {
+        typing.classList.add("hidden");
+        
+        // Fix for [object Object]
+        if (typeof botReply === "object" && botReply !== null) {
+            isLearning = true;
+            pendingQuestion = botReply.question;
+            addMsg(botReply.msg, "bot");
+        } else {
+            // Normal reply with 20% chance of follow-up
+            let finalReply = botReply;
+            if (Math.random() > 0.8) finalReply += ` ${followUps[Math.floor(Math.random() * followUps.length)]}`;
+            addMsg(finalReply, "bot");
+        }
+    }, 1200);
 };
 
-// --- Keyboard & Viewport Fix ---
+// Keyboard Alignment Fix
 if (window.visualViewport) {
-  window.visualViewport.addEventListener("resize", () => {
-    document.getElementById("app-container").style.height = `${window.visualViewport.height}px`;
-    scrollToBottom();
-  });
+    window.visualViewport.addEventListener("resize", () => {
+        document.getElementById("app-container").style.height = `${window.visualViewport.height}px`;
+        scrollToBottom();
+    });
 }
 
 input.addEventListener("keypress", (e) => { if (e.key === "Enter") window.send(); });
