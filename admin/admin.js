@@ -1,70 +1,76 @@
 import { db } from "./firebase.js";
-import { collection, getDocs, deleteDoc, doc, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { collection, getDocs, deleteDoc, doc, addDoc, serverTimestamp, writeBatch } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const container = document.getElementById("review-container");
 
-async function loadPending() {
-    container.innerHTML = "<p style='text-align:center'>Loading Data... ⏳</p>";
+// --- MASS UPLOAD LOGIC ---
+window.massUpload = async () => {
+    const data = document.getElementById("bulkData").value.trim();
+    if (!data) return alert("Pehle data toh daalo!");
+
+    const lines = data.split("\n");
+    const batch = [];
+    
     try {
-        // Aapke app.js ke 'temp_learning' collection se data fetch kar raha hai
-        const snap = await getDocs(collection(db, "temp_learning"));
-        container.innerHTML = "";
-
-        if (snap.empty) {
-            container.innerHTML = "<div style='text-align:center; padding:20px; color:#666;'>Abhi koi naya sawal nahi hai. Bot ko sikhaiye! 😊</div>";
-            return;
+        for (let line of lines) {
+            const [q, a] = line.split("|");
+            if (q && a) {
+                batch.push(addDoc(collection(db, "brain"), {
+                    question: q.trim().toLowerCase(),
+                    answers: [a.trim()],
+                    timestamp: serverTimestamp(),
+                    status: "approved"
+                }));
+            }
         }
-
-        snap.forEach((docSnap) => {
-            const data = docSnap.data();
-            const id = docSnap.id;
-            
-            const card = document.createElement("div");
-            card.className = "pending-card";
-            card.innerHTML = `
-                <div style="margin-bottom:8px;"><small style="color:#075e54; font-weight:bold;">Sawal:</small> <br> <b>${data.question}</b></div>
-                <div style="margin-bottom:8px;"><small style="color:#075e54; font-weight:bold;">User ka Jawab:</small></div>
-                <input type="text" value="${data.answer}" class="a-input" id="inp-${id}">
-                <div style="display:flex; gap:10px; margin-top:10px;">
-                    <button class="approve-btn" onclick="approveLearned('${id}', '${data.question}')">✅ Approve</button>
-                    <button class="delete-btn" onclick="deleteLearned('${id}')">🗑️ Reject</button>
-                </div>
-            `;
-            container.appendChild(card);
-        });
+        await Promise.all(batch);
+        alert("Success! Saara data Brain mein chala gaya. 🚀");
+        document.getElementById("bulkData").value = "";
     } catch (e) {
-        console.error("Fetch Error:", e);
-        container.innerHTML = "<p style='color:red; text-align:center;'>Error: Permission Denied. Check Firebase Rules.</p>";
+        alert("Upload fail: " + e.message);
     }
+};
+
+// --- PENDING REVIEW LOGIC ---
+async function loadPending() {
+    container.innerHTML = "Checking...";
+    const snap = await getDocs(collection(db, "temp_learning"));
+    container.innerHTML = "";
+
+    if (snap.empty) {
+        container.innerHTML = "Koi naya sawal nahi hai. 😊";
+        return;
+    }
+
+    snap.forEach((docSnap) => {
+        const data = docSnap.data();
+        const id = docSnap.id;
+        const div = document.createElement("div");
+        div.className = "pending-card";
+        div.innerHTML = `
+            <div><b>Q:</b> ${data.question}</div>
+            <input type="text" value="${data.answer}" class="a-input" id="inp-${id}">
+            <button style="background:#25d366" onclick="approveLearned('${id}', '${data.question}')">Approve</button>
+            <button style="background:#e74c3c" onclick="deleteLearned('${id}')">Reject</button>
+        `;
+        container.appendChild(div);
+    });
 }
 
 window.approveLearned = async (id, question) => {
-    const finalAnswer = document.getElementById(`inp-${id}`).value.trim();
-    if(!finalAnswer) return alert("Pehle jawab check karein!");
-
-    try {
-        // 1. Permanent 'brain' collection mein move karein
-        const ansList = finalAnswer.split(",").map(a => a.trim());
-        await addDoc(collection(db, "brain"), {
-            question: question.toLowerCase(),
-            answers: ansList,
-            status: "approved_by_admin",
-            timestamp: serverTimestamp()
-        });
-
-        // 2. 'temp_learning' se delete karein
-        await deleteDoc(doc(db, "temp_learning", id));
-        
-        alert("Success! Bot ab ye hamesha yaad rakhega. 🚀");
-        loadPending();
-    } catch (e) { alert("Error: " + e.message); }
+    const ans = document.getElementById(`inp-${id}`).value;
+    await addDoc(collection(db, "brain"), {
+        question: question.toLowerCase(),
+        answers: [ans],
+        timestamp: serverTimestamp()
+    });
+    await deleteDoc(doc(db, "temp_learning", id));
+    loadPending();
 };
 
 window.deleteLearned = async (id) => {
-    if(confirm("Kya aap ise reject karna chahte hain?")) {
-        await deleteDoc(doc(db, "temp_learning", id));
-        loadPending();
-    }
+    await deleteDoc(doc(db, "temp_learning", id));
+    loadPending();
 };
 
 loadPending();
