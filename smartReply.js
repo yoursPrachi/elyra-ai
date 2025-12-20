@@ -4,16 +4,17 @@ import { collection, query, where, getDocs, limit } from "https://www.gstatic.co
 export async function getSmartReply(text) {
     try {
         const t = text.toLowerCase().trim();
+        // Brain collection se answer dhoondein
         const q = query(collection(db, "brain"), where("question", "==", t), limit(1));
         const snap = await getDocs(q);
 
         if (!snap.empty) {
             const data = snap.docs[0].data();
-            // Multiple answers handle karein agar array hai
+            // Multiple answers (Array) check
             if (data.answers && Array.isArray(data.answers)) {
                 return data.answers[Math.floor(Math.random() * data.answers.length)];
-            }
-            return data.answer || "Bataiye, main aapki kya madad kar sakti hoon?";
+            } 
+            return data.answer || "Bataiye, aur kya jaanna hai?";
         }
 
         // Agar database mein nahi hai
@@ -24,7 +25,6 @@ export async function getSmartReply(text) {
         };
     } catch (e) {
         console.error("Firestore Error:", e);
-        // Error hone par direct retry ya simple msg
-        return "Network thoda busy hai, ek baar phir try karein.";
+        return "Connection thoda slow hai, dobara try karein.";
     }
 }
