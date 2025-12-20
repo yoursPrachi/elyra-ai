@@ -3,19 +3,21 @@ import { collection, query, where, getDocs, limit } from "https://www.gstatic.co
 
 export async function getSmartReply(text) {
     try {
-        await authReady; // Wait for Firebase Auth
+        await authReady; 
         const t = text.toLowerCase().trim();
         const q = query(collection(db, "brain"), where("question", "==", t), limit(1));
         const snap = await getDocs(q);
 
         if (!snap.empty) {
             const data = snap.docs[0].data();
+            // Agar Admin ne multiple answers daale hain toh random choose karein
             if (data.answers && Array.isArray(data.answers)) {
                 return data.answers[Math.floor(Math.random() * data.answers.length)];
             }
-            return data.answer || "Bataiye, aur kya jaanna hai?";
+            return data.answer || "Main thoda confuse hoon, fir se bolo?";
         }
 
+        // Search fail hone par Learning Mode trigger karein
         return {
             status: "NEED_LEARNING",
             question: t,
@@ -23,6 +25,6 @@ export async function getSmartReply(text) {
         };
     } catch (e) {
         console.error("Fetch Error:", e);
-        return "Network busy hai, ek baar phir try karein.";
+        return "Connection slow hai, refresh karke try karein!";
     }
 }
