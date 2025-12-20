@@ -3,15 +3,15 @@ import { collection, getDocs, deleteDoc, doc, addDoc, serverTimestamp } from "ht
 
 const container = document.getElementById("review-container");
 
-// --- Data Load Karein ---
 async function loadPending() {
-    container.innerHTML = "<p style='text-align:center'>Loading...</p>";
+    container.innerHTML = "<p style='text-align:center'>Loading Data... ⏳</p>";
     try {
+        // Aapke app.js ke 'temp_learning' collection se data fetch kar raha hai
         const snap = await getDocs(collection(db, "temp_learning"));
         container.innerHTML = "";
 
         if (snap.empty) {
-            container.innerHTML = "<div style='text-align:center; padding:20px;'>Sab approved hai! ✅ Koi naya sawal nahi mila.</div>";
+            container.innerHTML = "<div style='text-align:center; padding:20px; color:#666;'>Abhi koi naya sawal nahi hai. Bot ko sikhaiye! 😊</div>";
             return;
         }
 
@@ -19,57 +19,52 @@ async function loadPending() {
             const data = docSnap.data();
             const id = docSnap.id;
             
-            const div = document.createElement("div");
-            div.className = "pending-card";
-            div.innerHTML = `
-                <div class="q-tag">Question:</div>
-                <div style="margin-bottom:10px;">${data.question}</div>
-                <div class="q-tag">User's Answer:</div>
+            const card = document.createElement("div");
+            card.className = "pending-card";
+            card.innerHTML = `
+                <div style="margin-bottom:8px;"><small style="color:#075e54; font-weight:bold;">Sawal:</small> <br> <b>${data.question}</b></div>
+                <div style="margin-bottom:8px;"><small style="color:#075e54; font-weight:bold;">User ka Jawab:</small></div>
                 <input type="text" value="${data.answer}" class="a-input" id="inp-${id}">
-                <div class="btn-group">
+                <div style="display:flex; gap:10px; margin-top:10px;">
                     <button class="approve-btn" onclick="approveLearned('${id}', '${data.question}')">✅ Approve</button>
                     <button class="delete-btn" onclick="deleteLearned('${id}')">🗑️ Reject</button>
                 </div>
             `;
-            container.appendChild(div);
+            container.appendChild(card);
         });
     } catch (e) {
-        container.innerHTML = "Error loading data: " + e.message;
+        console.error("Fetch Error:", e);
+        container.innerHTML = "<p style='color:red; text-align:center;'>Error: Permission Denied. Check Firebase Rules.</p>";
     }
 }
 
-// --- One Click Approval Logic ---
 window.approveLearned = async (id, question) => {
     const finalAnswer = document.getElementById(`inp-${id}`).value.trim();
-    if(!finalAnswer) return alert("Answer khali nahi ho sakta!");
+    if(!finalAnswer) return alert("Pehle jawab check karein!");
 
     try {
-        // 1. Permanent Brain mein move karein (Supports Multiple Answers via commas)
-        const answerArray = finalAnswer.split(",").map(a => a.trim()).filter(a => a !== "");
-        
+        // 1. Permanent 'brain' collection mein move karein
+        const ansList = finalAnswer.split(",").map(a => a.trim());
         await addDoc(collection(db, "brain"), {
             question: question.toLowerCase(),
-            answers: answerArray,
-            status: "approved",
+            answers: ansList,
+            status: "approved_by_admin",
             timestamp: serverTimestamp()
         });
 
-        // 2. Temp collection se delete karein
+        // 2. 'temp_learning' se delete karein
         await deleteDoc(doc(db, "temp_learning", id));
         
-        alert("Approved! Ab bot ye hamesha yaad rakhega. ✨");
-        loadPending(); // Refresh list
-    } catch (e) {
-        alert("Error: " + e.message);
-    }
+        alert("Success! Bot ab ye hamesha yaad rakhega. 🚀");
+        loadPending();
+    } catch (e) { alert("Error: " + e.message); }
 };
 
 window.deleteLearned = async (id) => {
-    if(confirm("Kya aap is learning ko delete karna chahte hain?")) {
+    if(confirm("Kya aap ise reject karna chahte hain?")) {
         await deleteDoc(doc(db, "temp_learning", id));
         loadPending();
     }
 };
 
-// Initial Load
 loadPending();
