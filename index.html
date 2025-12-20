@@ -2,35 +2,31 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
   <title>Elyra AI</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+  <div id="app-container">
+    <header>
+      <img src="https://i.imgur.com/8Km9tLL.png" class="avatar">
+      <div class="user-info">
+        <h3>Elyra AI</h3>
+        <span id="status">online</span>
+      </div>
+    </header>
 
-<div class="app">
+    <main id="chat"></main>
 
-  <header class="topbar">
-    <img src="https://i.imgur.com/8Km9tLL.png">
-    <div>
-      <h4>Elyra AI</h4>
-      <small id="status">online</small>
-    </div>
-  </header>
+    <div id="typing" class="hidden">Elyra is typing...</div>
 
-  <main id="chat"></main>
-
-  <div id="typing" class="typing hidden">
-    <span></span><span></span><span></span>
+    <footer class="input-area">
+      <div class="input-wrapper">
+        <input type="text" id="input" placeholder="Type a message..." autocomplete="off">
+      </div>
+      <button id="send-btn" onclick="send()">➤</button>
+    </footer>
   </div>
-
-  <footer class="input-bar">
-    <input id="input" placeholder="Type a message…" />
-    <button onclick="send()">➤</button>
-  </footer>
-
-</div>
-
-<script type="module" src="app.js"></script>
+  <script type="module" src="app.js"></script>
 </body>
 </html>
