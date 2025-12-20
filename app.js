@@ -10,16 +10,20 @@ const conversationStarters = [
 function addMsg(text, cls) {
     const d = document.createElement("div");
     d.className = `msg ${cls}`;
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const ticks = cls === 'user' ? '<span class="ticks">✓✓</span>' : '';
 
+    // Message Content aur Time alag-alag div mein
     d.innerHTML = `
         <div class="msg-content">${text}</div>
-        <div class="time">${time} ${ticks}</div>
+        <div class="time">${timeStr} ${ticks}</div>
     `;
+
     chat.appendChild(d);
     scrollToBottom();
 }
+
 
 // --- MAIN SEND FUNCTION ---
 window.send = async () => {
