@@ -6,15 +6,17 @@ const chat = document.getElementById("chat");
 const input = document.getElementById("input");
 const typing = document.getElementById("typing");
 
+// --- Memory States ---
+let userName = localStorage.getItem("userName") || "";
 let isLearning = localStorage.getItem("isLearning") === "true";
 let pendingQuestion = localStorage.getItem("pendingQuestion") || "";
+let askingName = false;
 
-// Topic change karne waale sawal
+// Topic change starters
 const engagementStarters = [
-    "Wese, aapka koi favourite hobby hai? 🎨",
-    "Chalo ek game khelte hain! Aap sawal pucho main jawab doongi. 😎",
-    "Aaj kal log AI ke baare mein kya sochte hain, aapka kya khayal hai? 🤔",
-    "Mera mann kar raha hai kuch naya sunne ka, koi shayari sunao? ✍️"
+    "Wese, aaj ka din kaisa guzra? 😊",
+    "Tumhe music sunna pasand hai? 🎵",
+    "Mera dimaag toh digital hai, par tumhara dimaag kya soch raha hai? 😂"
 ];
 
 function addMsg(text, cls) {
@@ -27,6 +29,20 @@ function addMsg(text, cls) {
     chat.scrollTop = chat.scrollHeight;
 }
 
+// --- Initial Greeting ---
+window.onload = () => {
+    if (!userName) {
+        setTimeout(() => {
+            addMsg("Hello! Main Elyra AI hoon. ✨ Main aapka naam jaan sakti hoon?", "bot");
+            askingName = true;
+        }, 1000);
+    } else {
+        setTimeout(() => {
+            addMsg(`Welcome back, ${userName}! 😍 Kaise hain aap aaj?`, "bot");
+        }, 1000);
+    }
+};
+
 window.send = async () => {
     const text = input.value.trim();
     if (!text) return;
@@ -34,21 +50,33 @@ window.send = async () => {
     input.value = "";
     addMsg(text, "user");
 
-    // --- CASE 1: BOT LEARNING ---
+    // 1. Agar Bot Naam Pooch raha hai
+    if (askingName) {
+        userName = text;
+        localStorage.setItem("userName", userName);
+        askingName = false;
+        typing.classList.remove("hidden");
+        setTimeout(() => {
+            typing.classList.add("hidden");
+            addMsg(`Wah! ${userName}, kitna pyara naam hai aapka. ❤️ Chalo ab baatein karte hain!`, "bot");
+        }, 1000);
+        return;
+    }
+
+    // 2. Agar Bot Seekh raha hai
     if (isLearning) {
         typing.classList.remove("hidden");
         try {
             await addDoc(collection(db, "temp_learning"), {
                 question: pendingQuestion,
                 answer: text.toLowerCase(),
-                timestamp: serverTimestamp()
+                timestamp: serverTimestamp(),
+                learnedFrom: userName
             });
             
             setTimeout(() => {
                 typing.classList.add("hidden");
-                const starter = engagementStarters[Math.floor(Math.random() * engagementStarters.length)];
-                addMsg(`Wah! Maine yaad kar liya. 😍 Aap bahut ache teacher ho!\n\n${starter}`, "bot");
-                
+                addMsg(`Theek hai ${userName}, maine yaad kar liya! 😍 Sikhane ke liye thnx!`, "bot");
                 isLearning = false;
                 localStorage.removeItem("isLearning");
                 localStorage.removeItem("pendingQuestion");
@@ -57,7 +85,7 @@ window.send = async () => {
         return;
     }
 
-    // --- CASE 2: NORMAL CHAT ---
+    // 3. Normal Chat
     typing.classList.remove("hidden");
     const botReply = await getSmartReply(text);
 
@@ -70,11 +98,9 @@ window.send = async () => {
             localStorage.setItem("pendingQuestion", pendingQuestion);
             addMsg(botReply.msg, "bot");
         } else {
-            // Normal reply + 15% chance of keeping the flow alive
+            // Kabhi kabhi naam ke sath reply dena
             let finalMsg = botReply;
-            if (Math.random() > 0.85) {
-                finalMsg += "\n\n" + engagementStarters[Math.floor(Math.random() * engagementStarters.length)];
-            }
+            if (Math.random() > 0.7) finalMsg = `${userName}, ${botReply}`;
             addMsg(finalMsg, "bot");
         }
     }, 1200);
