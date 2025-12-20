@@ -6,23 +6,23 @@ const chat = document.getElementById("chat");
 const input = document.getElementById("input");
 const typing = document.getElementById("typing");
 
-// LocalStorage memory check
 let isLearning = localStorage.getItem("isLearning") === "true";
 let pendingQuestion = localStorage.getItem("pendingQuestion") || "";
 
-const starters = [
-    "Wese, tumhari pasandida movie kaunsi hai? ✨",
-    "Chalo ye batao, aaj ka din kaisa guzra? 😊",
-    "Mera dimaag toh digital hai, par tumhara dimaag kya soch raha hai? 😂",
-    "Interesting! Wese aur kuch naya puchenge? 🤔"
+// Topic change karne waale sawal
+const engagementStarters = [
+    "Wese, aapka koi favourite hobby hai? 🎨",
+    "Chalo ek game khelte hain! Aap sawal pucho main jawab doongi. 😎",
+    "Aaj kal log AI ke baare mein kya sochte hain, aapka kya khayal hai? 🤔",
+    "Mera mann kar raha hai kuch naya sunne ka, koi shayari sunao? ✍️"
 ];
 
 function addMsg(text, cls) {
     const d = document.createElement("div");
     d.className = `msg ${cls}`;
-    const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const ticks = cls === 'user' ? '<span class="ticks">✓✓</span>' : '';
-    d.innerHTML = `<div class="msg-content">${text}</div><div class="time">${time} ${ticks}</div>`;
+    d.innerHTML = `<div class="msg-content">${text}</div><div class="time">${timeStr} ${ticks}</div>`;
     chat.appendChild(d);
     chat.scrollTop = chat.scrollHeight;
 }
@@ -34,8 +34,8 @@ window.send = async () => {
     input.value = "";
     addMsg(text, "user");
 
-    // --- CASE 1: BOT IS LEARNING ---
-    if (isLearning === true) {
+    // --- CASE 1: BOT LEARNING ---
+    if (isLearning) {
         typing.classList.remove("hidden");
         try {
             await addDoc(collection(db, "temp_learning"), {
@@ -46,16 +46,14 @@ window.send = async () => {
             
             setTimeout(() => {
                 typing.classList.add("hidden");
-                const nextTopic = starters[Math.floor(Math.random() * starters.length)];
-                addMsg(`Wah! Maine yaad kar liya. 😍 Sikhane ke liye thnx!\n\n${nextTopic}`, "bot");
+                const starter = engagementStarters[Math.floor(Math.random() * engagementStarters.length)];
+                addMsg(`Wah! Maine yaad kar liya. 😍 Aap bahut ache teacher ho!\n\n${starter}`, "bot");
                 
-                // Reset states
                 isLearning = false;
-                pendingQuestion = "";
                 localStorage.removeItem("isLearning");
                 localStorage.removeItem("pendingQuestion");
             }, 1000);
-        } catch (e) { console.error("Save error:", e); }
+        } catch (e) { console.log(e); }
         return;
     }
 
@@ -72,9 +70,11 @@ window.send = async () => {
             localStorage.setItem("pendingQuestion", pendingQuestion);
             addMsg(botReply.msg, "bot");
         } else {
-            // Normal reply + 20% chance of random conversation starter
+            // Normal reply + 15% chance of keeping the flow alive
             let finalMsg = botReply;
-            if (Math.random() > 0.8) finalMsg += "\n\n" + starters[Math.floor(Math.random() * starters.length)];
+            if (Math.random() > 0.85) {
+                finalMsg += "\n\n" + engagementStarters[Math.floor(Math.random() * engagementStarters.length)];
+            }
             addMsg(finalMsg, "bot");
         }
     }, 1200);
