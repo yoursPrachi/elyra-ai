@@ -1,14 +1,19 @@
 :root {
   --wa-header: #075e54;
-  --wa-bg: #e5ddd5;
+  --wa-bg: #efe7dd; /* Light WhatsApp wallpaper color */
   --wa-msg-in: #ffffff;
   --wa-msg-out: #dcf8c6;
+  --wa-status: #e9edef;
 }
 
-* { box-sizing: border-box; margin: 0; padding: 0; }
+* { 
+  box-sizing: border-box; 
+  margin: 0; 
+  padding: 0; 
+}
 
 body {
-  font-family: 'Segoe UI', sans-serif;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background-color: #111;
   height: 100vh;
   display: flex;
@@ -16,10 +21,11 @@ body {
   overflow: hidden;
 }
 
+/* Main Container */
 #app-container {
   width: 100%;
   max-width: 500px;
-  height: 100dvh;
+  height: 100dvh; /* Mobile Keyboard friendly */
   display: flex;
   flex-direction: column;
   background: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
@@ -27,6 +33,7 @@ body {
   position: relative;
 }
 
+/* Header */
 header {
   background: var(--wa-header);
   color: white;
@@ -35,40 +42,100 @@ header {
   align-items: center;
   gap: 12px;
   z-index: 10;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-.avatar { width: 40px; height: 40px; border-radius: 50%; }
+.avatar { 
+  width: 40px; 
+  height: 40px; 
+  border-radius: 50%; 
+  object-fit: cover;
+}
 
+.user-info h3 { font-size: 16px; margin-bottom: 2px; }
+.user-info span { font-size: 12px; opacity: 0.8; }
+
+/* Chat Area */
 #chat {
   flex: 1;
   overflow-y: auto;
-  padding: 15px;
+  padding: 15px 10px;
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 4px; /* Real WA has small gap */
 }
 
+/* --- UNIQUE MESSAGE BUBBLES --- */
 .msg {
   max-width: 85%;
-  padding: 8px 12px;
-  border-radius: 8px;
-  font-size: 15px;
-  box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+  padding: 6px 7px 3px 9px;
+  font-size: 14.5px;
   position: relative;
+  box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
+  margin-bottom: 4px;
+  display: flex;
+  flex-direction: column;
   word-wrap: break-word;
 }
 
-.bot { align-self: flex-start; background: var(--wa-msg-in); border-top-left-radius: 0; }
-.user { align-self: flex-end; background: var(--wa-msg-out); border-top-right-radius: 0; }
+/* Bot Message Style (Incoming) */
+.bot {
+  align-self: flex-start;
+  background: var(--wa-msg-in);
+  border-radius: 0 8px 8px 8px; /* Sharp top-left corner */
+}
 
-#typing { padding: 5px 20px; font-size: 12px; color: #555; font-style: italic; }
+/* User Message Style (Outgoing) */
+.user {
+  align-self: flex-end;
+  background: var(--wa-msg-out);
+  border-radius: 8px 0 8px 8px; /* Sharp top-right corner */
+}
 
+/* Text Container */
+.msg-content {
+  margin-right: 25px; /* Time ke liye jagah */
+  color: #111b21;
+}
+
+/* Time & Ticks (Message ke bahar/niche bottom-right mein) */
+.time {
+  font-size: 10.5px;
+  color: #667781;
+  align-self: flex-end;
+  margin-top: -8px; /* Text ke thoda upar overlap logic */
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 3px;
+  min-width: 55px;
+}
+
+/* Blue Ticks */
+.ticks {
+  color: #53bdeb;
+  font-size: 12px;
+  letter-spacing: -3px;
+  margin-left: 2px;
+}
+
+/* Typing Indicator */
+#typing {
+  padding: 8px 20px;
+  font-size: 13px;
+  color: #667781;
+  font-style: italic;
+  background: rgba(255,255,255,0.5);
+}
+
+/* Input Bar */
 .input-area {
   padding: 8px 10px;
   display: flex;
   align-items: center;
   gap: 8px;
-  background: #f0f0f0;
+  background: transparent;
+  margin-bottom: 5px;
 }
 
 .input-wrapper {
@@ -77,12 +144,14 @@ header {
   border-radius: 25px;
   padding: 0 15px;
   display: flex;
+  align-items: center;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 #input {
   flex: 1;
   border: none;
-  padding: 12px 0;
+  padding: 11px 0;
   font-size: 16px;
   outline: none;
 }
@@ -91,13 +160,14 @@ header {
   background: #00a884;
   color: white;
   border: none;
-  width: 45px;
-  height: 45px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
+  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
 }
 
 .hidden { display: none; }
