@@ -9,8 +9,14 @@ const typing = document.getElementById("typing");
 let isLearning = false;
 let pendingQuestion = "";
 
-// Chat flow maintain karne ke liye
-const starters = ["Aur batao, kya chal raha hai? 😊", "Wese aaj ka din kaisa raha?", "Interesting! Kuch aur puchenge? 🤔"];
+// Chat starters to keep conversation alive
+const starters = [
+    "Aur batao, kya chal raha hai? 😊",
+    "Wese aaj ka din kaisa raha?",
+    "Interesting! Kuch aur puchenge? 🤔"
+];
+
+function scrollToBottom() { chat.scrollTop = chat.scrollHeight; }
 
 function addMsg(text, cls) {
     const d = document.createElement("div");
@@ -18,10 +24,11 @@ function addMsg(text, cls) {
     const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     const ticks = cls === 'user' ? '<span class="ticks">✓✓</span>' : '';
     
-    // UI fix: Time aur text ka layout aapke perfect CSS ke mutabiq
+    // Unique WhatsApp UI Layout
     d.innerHTML = `<div class="msg-content">${text}</div><div class="time">${time} ${ticks}</div>`;
+    
     chat.appendChild(d);
-    chat.scrollTop = chat.scrollHeight;
+    scrollToBottom();
 }
 
 window.send = async () => {
@@ -31,10 +38,11 @@ window.send = async () => {
     input.value = "";
     addMsg(text, "user");
 
-    // --- STEP A: AGAR BOT SEEKH RAHA HAI ---
+    // 1. PRIORITIZE LEARNING MODE
     if (isLearning) {
         typing.classList.remove("hidden");
         try {
+            // User ka jawab 'temp_learning' mein save karein
             await addDoc(collection(db, "temp_learning"), {
                 question: pendingQuestion,
                 answer: text.toLowerCase(),
@@ -46,28 +54,33 @@ window.send = async () => {
                 typing.classList.add("hidden");
                 const followUp = starters[Math.floor(Math.random() * starters.length)];
                 addMsg(`Wah! Maine yaad kar liya. Sikhane ke liye thnx! 😍\n\n${followUp}`, "bot");
-                isLearning = false; // Reset learning mode
+                
+                // Reset state
+                isLearning = false;
                 pendingQuestion = "";
             }, 1000);
-        } catch (e) { console.error(e); }
-        return; // Search logic bypass karein
+        } catch (e) { console.error("Save Error:", e); }
+        return; // Normal search bypass karein
     }
 
-    // --- STEP B: NORMAL CHAT MODE ---
+    // 2. NORMAL CHAT SEARCH
     typing.classList.remove("hidden");
     const botReply = await getSmartReply(text);
 
     setTimeout(() => {
         typing.classList.add("hidden");
         
-        // Agar reply ek object hai, toh iska matlab sawal ka jawab nahi pata
+        // Handle Learning Mode Trigger
         if (typeof botReply === "object" && botReply.status === "NEED_LEARNING") {
             isLearning = true;
             pendingQuestion = botReply.question;
             addMsg(botReply.msg, "bot");
         } else {
-            // Normal text reply
+            // Normal text response
             addMsg(botReply, "bot");
         }
     }, 1200);
 };
+
+// Enter key support
+input.addEventListener("keypress", (e) => { if (e.key === "Enter") window.send(); });
