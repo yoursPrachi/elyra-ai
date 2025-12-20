@@ -1,40 +1,55 @@
-async function loadQueue() {
-  const list = document.getElementById("queue-list");
-  try {
-    // Simple query bina kisi extra configuration ke
-    const querySnapshot = await getDocs(collection(db, "learningQueue"));
-    
-    list.innerHTML = "";
-    let count = 0;
+import { db } from "./firebase.js";
+import { collection, getDocs, deleteDoc, doc, addDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-    if (querySnapshot.empty) {
-      list.innerHTML = "<p style='text-align:center; color:#8696a0;'>No new questions yet! Bot is doing great. ✨</p>";
-      return;
-    }
+const pendingTable = document.getElementById("pending-table");
 
-    querySnapshot.forEach((doc) => {
-      count++;
-      const data = doc.data();
-      const card = document.createElement("div");
-      card.className = "card";
-      card.innerHTML = `
-        <div style="display:flex; justify-content:space-between; align-items:center;">
-           <p style="margin:0;"><strong>User Asked:</strong> "${data.question}"</p>
-           <span style="background:#25d366; color:#0b141a; padding:2px 8px; border-radius:10px; font-size:11px; font-weight:bold;">
-             ${data.count || 1} Times
-           </span>
-        </div>
-        <div style="margin-top:12px; display:flex; gap:10px;">
-           <button class="btn-train" onclick="trainBot('${doc.id}', '${data.question}')">✅ Train Bot</button>
-           <button class="btn-ignore" onclick="ignoreQuestion('${doc.id}')" style="background:#ea0038;">🗑️ Delete</button>
-        </div>
-      `;
-      list.appendChild(card);
+// --- Data Fetch Karein ---
+async function loadPendingData() {
+    pendingTable.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
+    const querySnapshot = await getDocs(collection(db, "temp_learning"));
+    pendingTable.innerHTML = "";
+
+    querySnapshot.forEach((docSnap) => {
+        const data = docSnap.data();
+        const row = document.createElement("tr");
+        row.innerHTML = `
+            <td>${data.question}</td>
+            <td><input type="text" value="${data.answer}" id="ans-${docSnap.id}"></td>
+            <td><span class="badge">${data.count || 1} users</span></td>
+            <td>
+                <button class="btn btn-approve" onclick="approveAns('${docSnap.id}', '${data.question}')">Approve</button>
+                <button class="btn btn-delete" onclick="deleteAns('${docSnap.id}')">Delete</button>
+            </td>
+        `;
+        pendingTable.appendChild(row);
     });
-
-    console.log(`Successfully loaded ${count} items.`);
-  } catch (error) {
-    console.error("Critical Fetch Error:", error);
-    list.innerHTML = `<p style='color:#ff5e5e;'>Error: ${error.message}</p>`;
-  }
 }
+
+// --- Approve Function (Brain mein move karein) ---
+window.approveAns = async (id, question) => {
+    const newAns = document.getElementById(`ans-${id}`).value;
+    try {
+        // 1. Brain mein add karein
+        await addDoc(collection(db, "brain"), {
+            question: question,
+            answer: newAns.toLowerCase().trim(),
+            type: "approved",
+            time: serverTimestamp()
+        });
+        // 2. Temp se delete karein
+        await deleteDoc(doc(db, "temp_learning", id));
+        alert("Approved and added to Brain!");
+        loadPendingData();
+    } catch (e) { alert("Error: " + e); }
+};
+
+// --- Delete Function ---
+window.deleteAns = async (id) => {
+    if(confirm("Are you sure?")) {
+        await deleteDoc(doc(db, "temp_learning", id));
+        loadPendingData();
+    }
+};
+
+// Initial Load
+loadPendingData();
