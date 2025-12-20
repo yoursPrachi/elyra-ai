@@ -2,7 +2,7 @@ import { db } from "./firebase.js";
 import { getSmartReply } from "./smartReply.js";
 import {
   collection, addDoc, updateDoc, deleteDoc,
-  doc, serverTimestamp
+  doc, serverTimestamp, getDocs, query, where
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const chat = document.getElementById("chat");
@@ -10,16 +10,20 @@ const input = document.getElementById("input");
 const typing = document.getElementById("typing");
 const status = document.getElementById("status");
 
-// Spam Control Variables
+// --- LOGIC VARIABLES ---
 let lastUserMsg = "";
 let repeatCount = 0;
+let isLearning = false;
+let pendingQuestion = "";
 
+// 1. Scroll Logic
 function scrollToBottom() {
   setTimeout(() => {
     chat.scrollTo({ top: chat.scrollHeight, behavior: 'smooth' });
   }, 100);
 }
 
+// 2. UI Message Logic
 function addMsg(text, cls, docId = null) {
   const time = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   const d = document.createElement("div");
@@ -43,12 +47,57 @@ function addMsg(text, cls, docId = null) {
   scrollToBottom();
 }
 
-// Main Send Function
+// 3. Community Learning: Save Answer Logic
+async function saveLearnedAnswer(q, a) {
+  const tAnswer = a.toLowerCase().trim();
+  const learningRef = collection(db, "temp_learning");
+  
+  const qry = query(learningRef, where("question", "==", q), where("answer", "==", tAnswer));
+  const snap = await getDocs(qry);
+
+  if (!snap.empty) {
+    const docData = snap.docs[0];
+    const newCount = (docData.data().count || 1) + 1;
+
+    if (newCount >= 3) {
+      await addDoc(collection(db, "brain"), {
+        question: q,
+        answer: a,
+        trainedBy: "community",
+        time: serverTimestamp()
+      });
+      await deleteDoc(doc(db, "temp_learning", docData.id));
+    } else {
+      await updateDoc(doc(db, "temp_learning", docData.id), { count: newCount });
+    }
+  } else {
+    await addDoc(learningRef, {
+      question: q,
+      answer: tAnswer,
+      originalText: a,
+      count: 1,
+      time: serverTimestamp()
+    });
+  }
+}
+
+// 4. MAIN SEND FUNCTION
 window.send = async () => {
   const text = input.value.trim();
   if (!text) return;
 
-  // --- 1. SPAM CHECK LOGIC ---
+  // A. IF IN LEARNING MODE
+  if (isLearning) {
+    input.value = "";
+    addMsg(text, "user");
+    await saveLearnedAnswer(pendingQuestion, text);
+    addMsg("Shukriya! 😍 Maine seekh liya hai. Jab 3 log yahi jawab denge, main ise hamesha yaad rakhungi.", "bot");
+    isLearning = false;
+    pendingQuestion = "";
+    return;
+  }
+
+  // B. SPAM CHECK
   if (text.toLowerCase() === lastUserMsg.toLowerCase()) {
     repeatCount++;
   } else {
@@ -57,17 +106,17 @@ window.send = async () => {
   }
 
   input.value = "";
-  input.blur(); // Keyboard Hide
+  input.blur(); // Keyboard auto-hide
 
-  // --- 2. UI & FIREBASE SAVE ---
   try {
+    // Save User Msg
     const ref = await addDoc(
       collection(db, "chats", "user", "messages"),
       { text, createdAt: serverTimestamp() }
     );
     addMsg(text, "user", ref.id);
 
-    // --- 3. REPEAT CHECK REACTION ---
+    // C. ROAST IF SPAMMED
     if (repeatCount >= 3) {
       typing.classList.remove("hidden");
       setTimeout(() => {
@@ -75,35 +124,40 @@ window.send = async () => {
         const roastMsgs = [
           "Ek hi baat bar bar bol kar paka rahe ho! 🙄",
           "Bhai, record todna hai kya? Kuch naya bolo! 🥱",
-          "Lagta hai aapki suyi atak gayi hai. 😂",
           "Bas bhi karo! Main samajh gayi ek hi baar mein. ✋"
         ];
         addMsg(roastMsgs[Math.floor(Math.random() * roastMsgs.length)], "bot");
       }, 1000);
-      return; // Stop further logic
+      return;
     }
 
-    // --- 4. NORMAL BOT REPLY ---
+    // D. SMART BOT REPLY
     typing.classList.remove("hidden");
     const botReply = await getSmartReply(text);
     
     setTimeout(() => {
       typing.classList.add("hidden");
-      addMsg(botReply, "bot");
-    }, 1500);
+
+      // Check if reply is Object (Learning Mode) or String
+      if (typeof botReply === 'object' && botReply !== null) {
+        if (botReply.type === "LEARNING_MODE") {
+          isLearning = true;
+          pendingQuestion = botReply.question;
+          addMsg(botReply.msg, "bot");
+        }
+      } else {
+        addMsg(botReply, "bot");
+      }
+    }, 1200);
 
   } catch (error) {
     console.error("Error:", error);
   }
 };
 
-// ... Baki functions (Menu, Edit, Delete) wahi rahenge ...
-
+// 5. ADDITIONAL UI LOGIC
 input.addEventListener("keypress", (e) => {
-  if (e.key === "Enter") {
-    e.preventDefault(); 
-    window.send(); 
-  }
+  if (e.key === "Enter") { e.preventDefault(); window.send(); }
 });
 
 function showMenu(el, id) {
@@ -125,7 +179,7 @@ window.editMsg = async (id) => {
 };
 
 window.delMsg = async (id) => {
-  if (confirm("Delete this message permanently?")) {
+  if (confirm("Delete permanently?")) {
     await deleteDoc(doc(db, "chats", "user", "messages", id));
     location.reload();
   }
