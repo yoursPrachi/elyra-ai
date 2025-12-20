@@ -9,12 +9,6 @@ const typing = document.getElementById("typing");
 let isLearning = false;
 let pendingQuestion = "";
 
-const starters = [
-    "Aur batao, kya chal raha hai? 😊",
-    "Wese aaj ka din kaisa raha?",
-    "Acha, aur kuch naya?"
-];
-
 function addMsg(text, cls) {
     const d = document.createElement("div");
     d.className = `msg ${cls}`;
@@ -32,10 +26,11 @@ window.send = async () => {
     input.value = "";
     addMsg(text, "user");
 
-    // --- Learning Mode Handler ---
+    // --- 1. LEARNING MODE HANDLER ---
     if (isLearning === true) {
         typing.classList.remove("hidden");
         try {
+            // User ka sikhaya jawab save karein
             await addDoc(collection(db, "temp_learning"), {
                 question: pendingQuestion,
                 answer: text.toLowerCase(),
@@ -44,35 +39,35 @@ window.send = async () => {
             
             setTimeout(() => {
                 typing.classList.add("hidden");
-                const followUp = starters[Math.floor(Math.random() * starters.length)];
-                addMsg(`Wah! Maine yaad kar liya. Sikhane ke liye thnx! 😍\n\n${followUp}`, "bot");
-                isLearning = false; // RESET
+                addMsg(`Wah! Maine yaad kar liya. Sikhane ke liye thnx! 😍 Aur batao, kya chal raha hai?`, "bot");
+                // IMPORTANT: Yahan flag reset ho raha hai
+                isLearning = false; 
                 pendingQuestion = "";
             }, 1000);
         } catch (e) {
-            console.error("Save Error:", e);
-            addMsg("Oh no! Kuch save nahi ho paya.", "bot");
+            console.error(e);
+            addMsg("Oh no! Connection error ki wajah se save nahi hua.", "bot");
+            isLearning = false;
         }
-        return;
+        return; // Aage ka search bypass karein
     }
 
-    // --- Normal Search Handler ---
+    // --- 2. NORMAL SEARCH HANDLER ---
     typing.classList.remove("hidden");
-    try {
-        const botReply = await getSmartReply(text);
-        
-        setTimeout(() => {
-            typing.classList.add("hidden");
-            if (typeof botReply === "object" && botReply.status === "NEED_LEARNING") {
-                isLearning = true;
-                pendingQuestion = botReply.question;
-                addMsg(botReply.msg, "bot");
-            } else {
-                addMsg(botReply, "bot");
-            }
-        }, 1200);
-    } catch (err) {
+    const botReply = await getSmartReply(text);
+
+    setTimeout(() => {
         typing.classList.add("hidden");
-        addMsg("Connection Error! Refresh karke dekhein.", "bot");
-    }
+        // Check karein ki bot ko jawab pata hai ya seekhna hai
+        if (typeof botReply === "object" && botReply.status === "NEED_LEARNING") {
+            isLearning = true;
+            pendingQuestion = botReply.question;
+            addMsg(botReply.msg, "bot");
+        } else {
+            addMsg(botReply, "bot");
+        }
+    }, 1200);
 };
+
+// Enter Key Support
+input.addEventListener("keypress", (e) => { if (e.key === "Enter") window.send(); });
