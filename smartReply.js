@@ -9,15 +9,14 @@ export async function getSmartReply(text) {
 
         if (!snap.empty) {
             const data = snap.docs[0].data();
-            
-            // Multiple answers handle karein
+            // Multiple answers (Array) check
             if (data.answers && Array.isArray(data.answers)) {
                 return data.answers[Math.floor(Math.random() * data.answers.length)];
             } 
             return data.answer || "Bataiye, aur kya jaanna hai?";
         }
 
-        // Agar database mein nahi hai, toh Learning Object bhejein
+        // AGAR JAWAB NAHI HAI: Learning trigger object bhejein
         return {
             status: "NEED_LEARNING",
             question: t,
@@ -25,6 +24,6 @@ export async function getSmartReply(text) {
         };
     } catch (e) {
         console.error("Database Error:", e);
-        return "Connection thoda slow hai, dobara try karein.";
+        return "Connection thoda slow hai, dobara try karein."; // Screenshot 3 ka error yahan se handle hoga
     }
 }
