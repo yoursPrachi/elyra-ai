@@ -3,6 +3,31 @@ import { collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp } from "ht
 
 const container = document.getElementById("review-container");
 
+// --- ADMIN SECURITY CONFIG ---
+const MASTER_PASSWORD = "apna_secret_pass"; // <--- Yahan apna password set karein
+
+window.checkAuth = () => {
+    const passInput = document.getElementById("admin-pass").value;
+    const loginDiv = document.getElementById("admin-login");
+    const errStatus = document.getElementById("login-err");
+
+    if (passInput === MASTER_PASSWORD) {
+        sessionStorage.setItem("isAdmin", "true");
+        loginDiv.style.display = "none";
+        loadPending(); // Data tabhi load hoga jab login ho jaye
+    } else {
+        errStatus.style.display = "block";
+        setTimeout(() => { errStatus.style.display = "none"; }, 2000);
+    }
+};
+
+// Check if already logged in (for refresh)
+if (sessionStorage.getItem("isAdmin") === "true") {
+    document.getElementById("admin-login").style.display = "none";
+}
+
+
+
 // --- MASS UPLOAD LOGIC FIX ---
 window.massUpload = async () => {
     const data = document.getElementById("bulkData").value.trim();
