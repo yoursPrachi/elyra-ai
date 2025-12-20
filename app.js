@@ -6,14 +6,15 @@ const chat = document.getElementById("chat");
 const input = document.getElementById("input");
 const typing = document.getElementById("typing");
 
-// LocalStorage se state uthao taaki bot "bhool" na jaye
+// LocalStorage memory check
 let isLearning = localStorage.getItem("isLearning") === "true";
 let pendingQuestion = localStorage.getItem("pendingQuestion") || "";
 
 const starters = [
-    "Aur batao, kya chal raha hai? 😊",
-    "Wese aaj ka din kaisa raha?",
-    "Acha, aur kuch naya? 🤔"
+    "Wese, tumhari pasandida movie kaunsi hai? ✨",
+    "Chalo ye batao, aaj ka din kaisa guzra? 😊",
+    "Mera dimaag toh digital hai, par tumhara dimaag kya soch raha hai? 😂",
+    "Interesting! Wese aur kuch naya puchenge? 🤔"
 ];
 
 function addMsg(text, cls) {
@@ -33,53 +34,48 @@ window.send = async () => {
     input.value = "";
     addMsg(text, "user");
 
-    // --- STEP 1: AGAR BOT SEEKH RAHA HAI ---
+    // --- CASE 1: BOT IS LEARNING ---
     if (isLearning === true) {
         typing.classList.remove("hidden");
         try {
             await addDoc(collection(db, "temp_learning"), {
                 question: pendingQuestion,
                 answer: text.toLowerCase(),
-                timestamp: serverTimestamp(),
-                count: 1
+                timestamp: serverTimestamp()
             });
             
             setTimeout(() => {
                 typing.classList.add("hidden");
-                const followUp = starters[Math.floor(Math.random() * starters.length)];
-                addMsg(`Wah! Maine yaad kar liya. Sikhane ke liye thnx! 😍\n\n${followUp}`, "bot");
+                const nextTopic = starters[Math.floor(Math.random() * starters.length)];
+                addMsg(`Wah! Maine yaad kar liya. 😍 Sikhane ke liye thnx!\n\n${nextTopic}`, "bot");
                 
-                // State reset aur Storage saaf karein
+                // Reset states
                 isLearning = false;
                 pendingQuestion = "";
                 localStorage.removeItem("isLearning");
                 localStorage.removeItem("pendingQuestion");
             }, 1000);
-        } catch (e) { 
-            console.error("Save Error:", e);
-        }
-        return; 
+        } catch (e) { console.error("Save error:", e); }
+        return;
     }
 
-    // --- STEP 2: NORMAL CHAT ---
+    // --- CASE 2: NORMAL CHAT ---
     typing.classList.remove("hidden");
     const botReply = await getSmartReply(text);
 
     setTimeout(() => {
         typing.classList.add("hidden");
-        
-        // Agar reply ek object hai (Status: NEED_LEARNING)
         if (typeof botReply === "object" && botReply.status === "NEED_LEARNING") {
             isLearning = true;
             pendingQuestion = botReply.question;
-            
-            // Storage mein save karein taaki loop na bane
             localStorage.setItem("isLearning", "true");
             localStorage.setItem("pendingQuestion", pendingQuestion);
-            
             addMsg(botReply.msg, "bot");
         } else {
-            addMsg(botReply, "bot");
+            // Normal reply + 20% chance of random conversation starter
+            let finalMsg = botReply;
+            if (Math.random() > 0.8) finalMsg += "\n\n" + starters[Math.floor(Math.random() * starters.length)];
+            addMsg(finalMsg, "bot");
         }
     }, 1200);
 };
