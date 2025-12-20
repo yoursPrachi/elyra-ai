@@ -3,39 +3,34 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elyra AI - Admin Panel</title>
+    <title>Elyra Admin - Review System</title>
     <style>
-        body { font-family: sans-serif; background: #f4f7f6; padding: 20px; }
-        .container { max-width: 900px; margin: auto; background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        h2 { color: #075e54; border-bottom: 2px solid #075e54; padding-bottom: 10px; }
-        table { width: 100%; border-collapse: collapse; margin-top: 20px; }
-        th, td { padding: 12px; text-align: left; border-bottom: 1px solid #ddd; }
-        th { background: #075e54; color: white; }
-        .btn { padding: 5px 10px; cursor: pointer; border: none; border-radius: 4px; color: white; margin-right: 5px; }
-        .btn-approve { background: #25d366; }
-        .btn-delete { background: #e74c3c; }
-        .btn-edit { background: #3498db; }
-        .badge { background: #eee; padding: 2px 6px; border-radius: 10px; font-size: 12px; }
+        :root { --primary: #075e54; --secondary: #25d366; --danger: #e74c3c; }
+        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
+        .header { background: var(--primary); color: white; padding: 15px; border-radius: 8px; margin-bottom: 20px; text-align: center; }
+        .card { background: white; border-radius: 10px; padding: 15px; margin-bottom: 15px; box-shadow: 0 2px 5px rgba(0,0,0,0.1); }
+        .q-text { font-weight: bold; color: #111b21; display: block; margin-bottom: 5px; }
+        .a-input { width: 100%; padding: 10px; border: 1px solid #ccc; border-radius: 5px; font-size: 14px; margin: 10px 0; }
+        .meta { font-size: 12px; color: #667781; display: flex; justify-content: space-between; }
+        .actions { display: flex; gap: 10px; margin-top: 10px; }
+        button { flex: 1; padding: 10px; border: none; border-radius: 5px; color: white; cursor: pointer; font-weight: bold; }
+        .approve-btn { background: var(--secondary); }
+        .delete-btn { background: var(--danger); }
+        .refresh-btn { background: #3498db; width: 100%; margin-bottom: 15px; }
+        .empty { text-align: center; color: #667781; padding: 20px; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <h2>Elyra AI Admin Panel</h2>
-    
-    <h3>Pending Review (User Taught)</h3>
-    <table>
-        <thead>
-            <tr>
-                <th>Question</th>
-                <th>User's Answer</th>
-                <th>Count</th>
-                <th>Actions</th>
-            </tr>
-        </thead>
-        <tbody id="pending-table">
-            </tbody>
-    </table>
+<div class="header">
+    <h2>Elyra AI Dashboard</h2>
+    <small>Review New Learning</small>
+</div>
+
+<button class="refresh-btn" onclick="location.reload()">🔄 Refresh List</button>
+
+<div id="review-container">
+    <div class="empty">Checking for new answers...</div>
 </div>
 
 <script type="module" src="admin.js"></script>
