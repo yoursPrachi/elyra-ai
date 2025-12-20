@@ -15,5 +15,5 @@ const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 export const db = getFirestore(app);
 
-// Auth ensure karne ke liye global promise
+// Auth Ready Promise for smartReply.js
 export const authReady = signInAnonymously(auth);
