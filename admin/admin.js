@@ -1,83 +1,81 @@
 import { db } from "./firebase.js";
-import { collection, getDocs, deleteDoc, doc, addDoc, updateDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { collection, addDoc, getDocs, deleteDoc, doc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-const pendingTable = document.getElementById("pending-table");
+const container = document.getElementById("review-container");
 
-// --- Admin Direct Upload Function ---
+// --- 1. Admin Direct Upload (Multiple Answers Support) ---
 window.adminUpload = async () => {
     const q = document.getElementById("admin-q").value.trim();
     const a = document.getElementById("admin-a").value.trim();
+    const btn = document.getElementById("upload-btn");
+    const btnText = document.getElementById("btn-text");
+    const resMsg = document.getElementById("response-msg");
 
-    if (!q || !a) {
-        return alert("Bhai, sawal aur jawab dono likhna zaroori hai! 🙄");
-    }
+    if (!q || !a) return alert("Sawal aur Jawab dono fill karein!");
+
+    btn.disabled = true;
+    btnText.innerText = "Processing... ⏳";
 
     try {
+        // Comma se split karke array banana
+        const answerList = a.split(",").map(ans => ans.trim()).filter(ans => ans !== "");
+
         await addDoc(collection(db, "brain"), {
             question: q.toLowerCase(),
-            answer: a,
+            answers: answerList, // Array format
             status: "admin_added",
             timestamp: serverTimestamp()
         });
-        
-        // Inputs khali karein
+
+        resMsg.innerText = "Elyra ab smartly jawab degi! ✅";
+        resMsg.style.color = "#25d366";
+        resMsg.style.display = "block";
         document.getElementById("admin-q").value = "";
         document.getElementById("admin-a").value = "";
-        
-        alert("Done! Elyra ab ye naya sawal seekh gayi hai. ✅");
+
     } catch (e) {
-        alert("Upload fail ho gaya: " + e.message);
+        resMsg.innerText = "Error: " + e.message;
+        resMsg.style.color = "#e74c3c";
+        resMsg.style.display = "block";
+    } finally {
+        btn.disabled = false;
+        btnText.innerText = "🚀 Upload to Brain";
+        setTimeout(() => { resMsg.style.display = "none"; }, 4000);
     }
 };
 
+// --- 2. Load Pending Learning ---
+async function loadPending() {
+    const snap = await getDocs(collection(db, "temp_learning"));
+    container.innerHTML = "";
+    if (snap.empty) { container.innerHTML = "<p style='text-align:center'>Sab approved hai! ✅</p>"; return; }
 
-// --- Data Fetch Karein ---
-async function loadPendingData() {
-    pendingTable.innerHTML = "<tr><td colspan='4'>Loading...</td></tr>";
-    const querySnapshot = await getDocs(collection(db, "temp_learning"));
-    pendingTable.innerHTML = "";
-
-    querySnapshot.forEach((docSnap) => {
+    snap.forEach((docSnap) => {
         const data = docSnap.data();
-        const row = document.createElement("tr");
-        row.innerHTML = `
-            <td>${data.question}</td>
-            <td><input type="text" value="${data.answer}" id="ans-${docSnap.id}"></td>
-            <td><span class="badge">${data.count || 1} users</span></td>
-            <td>
-                <button class="btn btn-approve" onclick="approveAns('${docSnap.id}', '${data.question}')">Approve</button>
-                <button class="btn btn-delete" onclick="deleteAns('${docSnap.id}')">Delete</button>
-            </td>
+        const div = document.createElement("div");
+        div.className = "pending-card";
+        div.innerHTML = `
+            <strong>Q: ${data.question}</strong>
+            <input type="text" value="${data.answer}" class="a-input" id="edit-${docSnap.id}">
+            <div style="display:flex; gap:10px;">
+                <button style="background:#25d366" onclick="approve('${docSnap.id}', '${data.question}')">Approve</button>
+                <button style="background:#e74c3c" onclick="remove('${docSnap.id}')">Delete</button>
+            </div>
         `;
-        pendingTable.appendChild(row);
+        container.appendChild(div);
     });
 }
 
-// --- Approve Function (Brain mein move karein) ---
-window.approveAns = async (id, question) => {
-    const newAns = document.getElementById(`ans-${id}`).value;
-    try {
-        // 1. Brain mein add karein
-        await addDoc(collection(db, "brain"), {
-            question: question,
-            answer: newAns.toLowerCase().trim(),
-            type: "approved",
-            time: serverTimestamp()
-        });
-        // 2. Temp se delete karein
-        await deleteDoc(doc(db, "temp_learning", id));
-        alert("Approved and added to Brain!");
-        loadPendingData();
-    } catch (e) { alert("Error: " + e); }
+window.approve = async (id, q) => {
+    const val = document.getElementById(`edit-${id}`).value.trim();
+    const answerList = val.split(",").map(ans => ans.trim()).filter(ans => ans !== "");
+    await addDoc(collection(db, "brain"), { question: q.toLowerCase(), answers: answerList, timestamp: serverTimestamp() });
+    await deleteDoc(doc(db, "temp_learning", id));
+    loadPending();
 };
 
-// --- Delete Function ---
-window.deleteAns = async (id) => {
-    if(confirm("Are you sure?")) {
-        await deleteDoc(doc(db, "temp_learning", id));
-        loadPendingData();
-    }
+window.remove = async (id) => {
+    if(confirm("Hata dein?")) { await deleteDoc(doc(db, "temp_learning", id)); loadPending(); }
 };
 
-// Initial Load
-loadPendingData();
+loadPending();
