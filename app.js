@@ -1,6 +1,6 @@
 import { db } from "./firebase.js";
 import { getSmartReply } from "./smartReply.js";
-import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, getDocs, query, where, limit } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const chat = document.getElementById("chat");
 const input = document.getElementById("input");
@@ -12,7 +12,7 @@ let chatMode = localStorage.getItem("chatMode") || "";
 let isLearning = localStorage.getItem("isLearning") === "true";
 let pendingQuestion = localStorage.getItem("pendingQuestion") || "";
 
-// Location Helper (Ab ye hamesha fetch nahi hoga, sirf zarurat par)
+// Location Helper
 async function getUserContext() {
     try {
         const response = await fetch('https://ipapi.co/json/');
@@ -45,11 +45,17 @@ window.startNamedChat = async () => {
     if (name && email) {
         localStorage.setItem("userName", name);
         localStorage.setItem("chatMode", "named");
-        localStorage.setItem("isNewUser", "true"); // Flag for first greeting
+        localStorage.setItem("isNewUser", "true"); 
+        localStorage.setItem("visitCount", "1"); // Initialize visits
         document.getElementById("welcome-popup").style.display = "none";
         
         try {
-            await addDoc(collection(db, "users_list"), { name, email, timestamp: serverTimestamp() });
+            await addDoc(collection(db, "users_list"), { 
+                name, 
+                email, 
+                visits: 1, 
+                timestamp: serverTimestamp() 
+            });
         } catch (e) { console.error(e); }
         
         initiateGreeting(name, "named");
@@ -60,14 +66,21 @@ window.startGuestChat = () => {
     localStorage.setItem("userName", "Dost");
     localStorage.setItem("chatMode", "guest");
     localStorage.setItem("isNewUser", "true");
+    localStorage.setItem("visitCount", "1");
     document.getElementById("welcome-popup").style.display = "none";
     initiateGreeting("Dost", "guest");
 };
 
-// --- IMPROVED GREETING LOGIC ---
+// --- SMART LOYALTY GREETING LOGIC ---
 async function initiateGreeting(name, mode) {
-    // Check if session already greeted (to prevent greeting on every refresh)
     if (sessionStorage.getItem("greeted")) return;
+
+    // Update Local Visit Count
+    let visits = parseInt(localStorage.getItem("visitCount") || "0");
+    if (localStorage.getItem("isNewUser") !== "true") {
+        visits++;
+        localStorage.setItem("visitCount", visits.toString());
+    }
 
     setTimeout(async () => {
         let greet = "";
@@ -78,14 +91,20 @@ async function initiateGreeting(name, mode) {
             greet = mode === "named" 
                 ? `Swaagat hai **${name}**! ✨ Aap ${context.city} se jud rahe hain, jaan kar khushi hui. Bataiye main aapki kya madad kar sakti hoon?` 
                 : `Hey **Dost**! 👤 Kaise ho? Chalo aaj dher saari baatein karte hain!`;
-            localStorage.removeItem("isNewUser"); // First time greeting done
+            localStorage.removeItem("isNewUser");
         } else {
-            // Short Welcome Back for returning users
-            greet = `Welcome back, **${name}**! 😍 Khushi hui aapko dubara dekh kar. Kaise hain aap?`;
+            // Loyalty Based Greetings
+            if (visits <= 3) {
+                greet = `Welcome back, **${name}**! 😍 Khushi hui aapko dubara dekh kar.`;
+            } else if (visits > 3 && visits <= 10) {
+                greet = `Namaste **${name}** ji! 🙏 Aap toh hamare purane dost ban gaye hain. Bataiye aaj kya naya hai?`;
+            } else {
+                greet = `Oho! Hamare **VIP Dost ${name}** tashreef laye hain! 👑 Aapka aana hamare liye khas hai.`;
+            }
         }
         
         addMsg(greet, "bot");
-        sessionStorage.setItem("greeted", "true"); // Session mark
+        sessionStorage.setItem("greeted", "true");
     }, 1000);
 }
 
@@ -140,9 +159,12 @@ window.send = async () => {
             let finalMsg = botReply;
             const mode = localStorage.getItem("chatMode");
             const name = localStorage.getItem("userName");
+            const visits = parseInt(localStorage.getItem("visitCount") || "1");
             
-            // Randomly use user name for personal touch
-            if (Math.random() > 0.8) {
+            // VIPs get more respect
+            if (visits > 10) {
+                finalMsg = `Ji ${name} Sahab, ${botReply}`;
+            } else if (Math.random() > 0.8) {
                 finalMsg = mode === "named" ? `${name} ji, ${botReply}` : `${name}, ${botReply}`;
             }
             addMsg(finalMsg, "bot");
