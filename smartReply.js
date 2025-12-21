@@ -1,4 +1,3 @@
-// smartReply.js - Pro Advance Version
 import { db, authReady } from "./firebase.js";
 import { preReplies } from "./preReplies.js";
 import { 
@@ -7,35 +6,63 @@ import {
 
 let brainCache = null;
 
-// --- 1. Mood & Personality Engine ---
-function detectUserMood(history) {
-    const lastMsgs = history.slice(-3).map(h => h.text.toLowerCase()).join(" ");
-    if (lastMsgs.includes("gussa") || lastMsgs.includes("angry") || lastMsgs.includes("bad")) return "empathetic";
-    if (lastMsgs.includes("pyaar") || lastMsgs.includes("love") || lastMsgs.includes("cute")) return "romantic";
-    return "playful"; // Default Girl Personality
+// --- 1. Natural Girl Personality Hooks ---
+const getGirlVibe = () => {
+    const hour = new Date().getHours();
+    // Time-based context (Raat ko late uthna ya subah jaldi)
+    if (hour >= 23 || hour <= 4) return "Tum abhi tak soye nahi? 😴 Main toh bas sone hi wali thi..";
+    if (hour >= 5 && hour <= 9) return "Good morning! ✨ Itni jaldi uth gaye? Chai pi li?";
+    return "";
+};
+
+// --- 2. Advanced Similarity Logic ---
+function getSimilarity(s1, s2) {
+    let longer = s1.length < s2.length ? s2 : s1;
+    let shorter = s1.length < s2.length ? s1 : s2;
+    if (longer.length == 0) return 1.0;
+    const editDistance = (s1, s2) => {
+        let costs = [];
+        for (let i = 0; i <= s1.length; i++) {
+            let lastValue = i;
+            for (let j = 0; j <= s2.length; j++) {
+                if (i == 0) costs[j] = j;
+                else if (j > 0) {
+                    let newValue = costs[j - 1];
+                    if (s1.charAt(i - 1) != s2.charAt(j - 1))
+                        newValue = Math.min(Math.min(newValue, lastValue), costs[j]) + 1;
+                    costs[j - 1] = lastValue;
+                    lastValue = newValue;
+                }
+            }
+            if (i > 0) costs[s2.length] = lastValue;
+        }
+        return costs[s2.length];
+    };
+    return (longer.length - editDistance(longer, shorter)) / parseFloat(longer.length);
 }
 
-// --- 2. Advanced Global Reply Logic ---
+// --- 3. Main Global Smart Reply with Natural Intelligence ---
 export async function getSmartReply(text, history = []) {
     const lowerInput = text.toLowerCase().trim();
-    const mood = detectUserMood(history);
-    
     await authReady;
 
-    // A. Personality Phrases based on Mood
-    const moodResponses = {
-        "empathetic": "Oh no.. tumhaara mood theek nahi hai kya? 🥺 Main hoon na, batao kya hua?",
-        "romantic": "Aww.. tum itni pyaari baatein kaise kar lete ho? ❤️ 🙈",
-        "playful": "Hehe! Tum kaafi filmy ho yaar.. aur sunao! 😜"
-    };
-
-    // Special Trigger for Mood Check
-    if (lowerInput.includes("mood") || lowerInput.includes("kaise ho")) {
-        return moodResponses[mood];
+    // A. Casual Slang & Real Reaction
+    if (lowerInput === "hi" || lowerInput === "hello") {
+        const timeVibe = getGirlVibe();
+        return timeVibe ? timeVibe : "Hlo! ✨ Kaise ho? Sab theek?";
     }
 
-    // B. Semantic Intent Matching (Placeholder for Neural logic)
-    // Agar input short hai (Greetings), pre-replies use karein
+    if (lowerInput.includes("robot") || lowerInput.includes("ai")) {
+        return "Robot? Main? 🙄 Sach bataun toh main dil se baat karti hoon! Tumhe aisa lagta hai kya? 🥺";
+    }
+
+    // B. Human Typos Logic (Artificial Imperfection)
+    // Kabhi-kabhi jaan-boojhkar typing error theek karna
+    if (Math.random() > 0.9) {
+        return "Sorry, typing error.. 🙈 Kya kaha tumne?";
+    }
+
+    // C. Instant Pre-Replies for Short Interactions
     if (preReplies[lowerInput]) return preReplies[lowerInput];
 
     try {
@@ -56,7 +83,6 @@ export async function getSmartReply(text, history = []) {
             }
         });
 
-        // Threshold optimized for Hinglish (0.65)
         if (highestScore > 0.65) {
             const docRef = doc(db, "brain", bestMatch.id);
             updateDoc(docRef, { hitCount: increment(1) });
@@ -65,16 +91,17 @@ export async function getSmartReply(text, history = []) {
                 ? bestMatch.answers[Math.floor(Math.random() * bestMatch.answers.length)]
                 : bestMatch.answer;
 
-            // Adding a 'Girl Filter' to any DB answer
-            return `${reply} ${mood === 'playful' ? '✨' : '😊'}`;
+            // Adding "Girl Filter" - Nakhre or Sweetness
+            const suffixes = [" ✨", " 🙈", " na?", " 😊"];
+            return reply + suffixes[Math.floor(Math.random() * suffixes.length)];
         }
 
-        // C. Proactive Self-Learning with Personality
+        // D. Proactive Learning Request (Very Natural)
         return {
             status: "NEED_LEARNING",
             question: lowerInput,
-            msg: "Mmm.. ye wala thoda tough hai. 🙈 Kya tum mujhe iska ek pyara sa jawab sikhaoge? Please? ✨"
+            msg: "Mmm.. ye mujhe nahi pata. 🙈 Batao na, iska sahi jawab kya hona chahiye? Please? ✨"
         };
 
-    } catch (e) { return "Satellite connection slow hai.. 🛰️ Phir se try karein?"; }
+    } catch (e) { return "Oh no, network issue.. 🛰️ Ek baar phir bolo?"; }
 }
