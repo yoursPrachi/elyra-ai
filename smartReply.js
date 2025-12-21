@@ -1,37 +1,37 @@
 import { db, authReady } from "./firebase.js";
 import { collection, query, where, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-// Multi-language Greetings & Context
-const globalContext = {
-    "en": {
-        "hello": ["Hello! How can I help you today? 🌎", "Hi! Elyra here, nice to meet you!"],
-        "who are you": ["I am Elyra, your global AI friend. ✨"],
-        "fallback": "That's interesting! I'm still learning global languages. Can you teach me what that means?"
+// --- 1. Language Detection & Contextual Fallbacks ---
+const languageLogic = {
+    detect: (text) => {
+        if (/[\u0600-\u06FF]/.test(text)) return "ar"; // Arabic
+        if (/[a-zA-Z]/.test(text)) {
+            // Check for Spanish common words as example
+            if (/\b(hola|como|gracias|buenos)\b/i.test(text)) return "es"; 
+            return "en"; // English/International
+        }
+        return "hi"; // Default Hinglish/Hindi
     },
-    "es": { // Spanish
-        "hola": ["¡Hola! ¿Cómo estás? 🇪🇸", "¡Hola! Soy Elyra AI."],
-        "fallback": "¡Qué interesante! Estoy aprendiendo español. ¿Qué significa eso?"
-    },
-    "ar": { // Arabic
-        "marhaba": ["مرحباً! كيف حالك؟ 🇸🇦", "أهلاً بك، أنا إليرا."],
-        "fallback": "هذا ممتع! أنا أتعلم اللغة العربية. ماذا يعني ذلك؟"
+    getFallback: (lang) => {
+        const msgs = {
+            "hi": "Hmm, mujhe iska jawab nahi pata. 😅 Kya tum mujhe sikha sakte ho?",
+            "en": "That's interesting! I don't know the answer yet. 🌎 Can you teach me?",
+            "es": "¡Qué interesante! No sé la respuesta. ¿Podrías enseñarme? 🇪🇸",
+            "ar": "هذا ممتع! أنا لا أزال أتعلم. هل يمكنك تعليمي؟ 🇸🇦"
+        };
+        return msgs[lang] || msgs["en"];
     }
 };
 
-export async function getSmartReply(text, lang = "hi") {
+export async function getSmartReply(text) {
     try {
         const t = text.toLowerCase().trim();
+        const userLang = languageLogic.detect(t);
+        
         await authReady;
 
-        // 1. Global Context Check (If user speaks English/Spanish/Arabic)
-        for (let code in globalContext) {
-            if (globalContext[code][t]) {
-                const res = globalContext[code][t];
-                return res[Math.floor(Math.random() * res.length)];
-            }
-        }
-
-        // 2. Database Brain Search (Local & Global)
+        // --- 2. Brain Search ---
+        // Hum simple query rakhenge taaki aapko DB update na karna pade
         const q = query(collection(db, "brain"), where("question", "==", t), limit(1));
         const snap = await getDocs(q);
 
@@ -41,13 +41,16 @@ export async function getSmartReply(text, lang = "hi") {
             return answers[Math.floor(Math.random() * answers.length)];
         }
 
-        // 3. Smart Fallback based on Detection
+        // --- 3. Smart Fallback (Unknown Question) ---
+        // Agar DB mein nahi mila, toh bhasha ke hisab se reply karega
         return {
             status: "NEED_LEARNING",
             question: t,
-            msg: "I'm still learning this part of the world! 🌍 Kya tum mujhe iska sahi jawab bata sakte ho?"
+            msg: languageLogic.getFallback(userLang)
         };
+
     } catch (e) {
-        return "Connecting to global servers... 🛰️";
+        console.error("Global Brain Error:", e);
+        return "System update ho raha hai... 🛰️✨";
     }
 }
