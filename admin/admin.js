@@ -26,6 +26,45 @@ if (sessionStorage.getItem("isAdmin") === "true") {
     document.getElementById("admin-login").style.display = "none";
 }
 
+// Similarity function (Bot wale logic jaisa hi)
+function getSimilarity(s1, s2) {
+    let longer = s1.length < s2.length ? s2 : s1;
+    let shorter = s1.length < s2.length ? s1 : s2;
+    if (longer.length == 0) return 1.0;
+    
+    // ... (Similarity code remains same as provided in previous step)
+    return (longer.length - editDistance(longer, shorter)) / parseFloat(longer.length);
+}
+
+window.checkDuplicate = async () => {
+    const queryStr = document.getElementById("check-query").value.toLowerCase().trim();
+    const resultDiv = document.getElementById("check-result");
+    
+    if(!queryStr) return;
+    
+    resultDiv.innerHTML = "Searching database... ⏳";
+    
+    const snap = await getDocs(collection(db, "brain"));
+    let closestMatch = null;
+    let maxScore = 0;
+
+    snap.forEach(doc => {
+        const dbQuestion = doc.data().question.toLowerCase();
+        const score = getSimilarity(queryStr, dbQuestion);
+        if (score > maxScore) {
+            maxScore = score;
+            closestMatch = dbQuestion;
+        }
+    });
+
+    if (maxScore > 0.8) {
+        resultDiv.innerHTML = `⚠️ Milta-julta sawal mila: <span style="color:red;">"${closestMatch}"</span> (${Math.round(maxScore*100)}% match)`;
+    } else if (maxScore > 0.5) {
+        resultDiv.innerHTML = `🤔 Thoda milta-julta hai: "${closestMatch}" (${Math.round(maxScore*100)}% match). Check kar lein.`;
+    } else {
+        resultDiv.innerHTML = `✅ Ye sawal naya lag raha hai! (Best match only ${Math.round(maxScore*100)}%)`;
+    }
+};
 
 
 // --- MASS UPLOAD LOGIC FIX ---
