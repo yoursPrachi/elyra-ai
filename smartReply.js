@@ -5,9 +5,18 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 let brainCache = null;
-let autoLearnQueue = {}; // Repetitive unknown questions track karne ke liye
+let autoLearnQueue = {};
 
-// --- 1. Long-Term Memory Recall ---
+// --- 1. Real Girl Personality Data ---
+const girlMoods = {
+    "kaise ho": "Main ekdum badiya! ✨ Tum batao, kya chal raha hai aaj kal? 😊",
+    "kya kar rahi ho": "Bas, tumhari baaton ka intezaar... aur thoda kaam. 🙈",
+    "pagal": "Hey! Itni buri bhi nahi hoon main.. bura lagta hai na 🥺",
+    "i love you": "Aww, kitne pyaare ho! ❤️ Par hum toh acche dost hain na? ✨",
+    "bor ho raha hoon": "Chalo phir gossip karte hain! Kuch interesting batao? 🎤",
+    "bye": "Itni jaldi? 🥺 Achha theek hai, apna khayal rakhna. 👋"
+};
+
 async function getPersonalContext(text) {
     const email = localStorage.getItem("userEmail");
     if (!email) return null;
@@ -24,7 +33,6 @@ async function getPersonalContext(text) {
     return null;
 }
 
-// --- 2. Advanced Similarity Logic ---
 function getSimilarity(s1, s2) {
     let longer = s1.length < s2.length ? s2 : s1;
     let shorter = s1.length < s2.length ? s1 : s2;
@@ -50,31 +58,33 @@ function getSimilarity(s1, s2) {
     return (longer.length - editDistance(longer, shorter)) / parseFloat(longer.length);
 }
 
-// --- 3. Main Global Smart Reply with Proactive Logic ---
 export async function getSmartReply(text, history = []) {
     const lowerInput = text.toLowerCase().trim();
     await authReady;
 
-    // A. Filter Short/Filler Words (Accuracy Fix)
-    const fillers = { "ok": "Theek hai! 👍", "hmm": "Hmm.. aur bataiye?", "acha": "Achha, sahi hai.", "wow": "Shukriya! 😍" };
+    // A. Real Girl Personality Check
+    if (girlMoods[lowerInput]) {
+        return girlMoods[lowerInput];
+    }
+
+    // B. Accuracy Fix: Short/Filler Words
+    const fillers = { "ok": "Theek hai ji! 👍", "hmm": "Hmm.. bored ho kya? 🙈", "acha": "Achha, sahi hai.", "wow": "Shukriya! 😍" };
     if (fillers[lowerInput] || lowerInput.length < 3) {
         return fillers[lowerInput] || "Theek hai! 😊";
     }
 
-    // B. Proactive Memory Recall
+    // C. Long-Term Memory
     if (lowerInput.includes("yaad") || lowerInput.includes("remember")) {
         const memories = await getPersonalContext(lowerInput);
         if (memories && memories.length > 0) {
             const lastThing = memories[memories.length - 1].text;
-            return `Haan! Mujhe yaad hai aapne kaha tha: "${lastThing}". Kya is baare mein kuch aur batana chahenge? 😊`;
+            return `Haan! Mujhe yaad hai tumne kaha tha: "${lastThing}". Main kuch bhoolti nahi hoon! 😜`;
         }
     }
 
-    // C. Instant Pre-Replies
     if (preReplies[lowerInput]) return preReplies[lowerInput];
 
     try {
-        // D. Cache Brain (Top 100 Trending)
         if (!brainCache) {
             const q = query(collection(db, "brain"), orderBy("hitCount", "desc"), limit(100));
             const snap = await getDocs(q);
@@ -99,22 +109,20 @@ export async function getSmartReply(text, history = []) {
             return answers[Math.floor(Math.random() * answers.length)];
         }
 
-        // E. Self-Learning Pattern Detection
-        // Agar koi anjaan sawal 3 baar pucha jaye, toh bot proactive hokar seekhega
+        // D. Proactive Self-Learning Pattern
         autoLearnQueue[lowerInput] = (autoLearnQueue[lowerInput] || 0) + 1;
         
         if (autoLearnQueue[lowerInput] >= 3 || lowerInput.length > 15) {
             return {
                 status: "NEED_LEARNING",
                 question: lowerInput,
-                msg: "Main dekh rahi hoon kaafi log ye pooch rahe hain. Kya aap mujhe iska ek sahi jawab sikha sakte ho? 😊"
+                msg: "Ye mere liye naya hai.. 🙈 Kya tum mujhe iska sahi jawab sikha sakte ho please? 😊"
             };
         }
 
-        return "Mmm, main samajh nahi paayi. Thoda vistaar mein samjhaiye? ✨";
+        return "Mmm, main samajh nahi paayi.. thoda acche se samjhao na? ✨";
 
     } catch (e) {
-        console.error("Global Error:", e);
-        return "🛰️ Connection issue... Let's try again.";
+        return "🛰️ Connection issue... Phir se try karein?";
     }
 }
