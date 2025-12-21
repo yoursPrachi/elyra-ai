@@ -26,6 +26,28 @@ if (sessionStorage.getItem("isAdmin") === "true") {
     document.getElementById("admin-login").style.display = "none";
 }
 
+async function loadTrending() {
+    const table = document.getElementById("trending-table");
+    // Sirf wahi sawal uthao jo sabse zyada puche gaye hain
+    const q = query(collection(db, "brain"), orderBy("hitCount", "desc"), limit(10));
+    const snap = await getDocs(q);
+    
+    table.innerHTML = "";
+    snap.forEach(doc => {
+        const data = doc.data();
+        table.innerHTML += `
+            <tr style="border-bottom:1px solid #eee;">
+                <td style="padding:10px;">${data.question}</td>
+                <td style="padding:10px;"><span class="badge" style="background:#3498db; color:white; padding:2px 8px; border-radius:10px;">${data.hitCount || 0} hits</span></td>
+                <td style="padding:10px;">
+                    <button onclick="reform('${doc.id}')" style="background:#f39c12; color:white; border:none; border-radius:4px; padding:5px;">Reform</button>
+                    <button onclick="deleteDoc('${doc.id}')" style="background:#e74c3c; color:white; border:none; border-radius:4px; padding:5px;">Clean</button>
+                </td>
+            </tr>`;
+    });
+}
+
+
 // Similarity function (Bot wale logic jaisa hi)
 function getSimilarity(s1, s2) {
     let longer = s1.length < s2.length ? s2 : s1;
