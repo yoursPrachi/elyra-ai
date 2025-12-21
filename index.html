@@ -7,6 +7,27 @@
   <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
+<div id="welcome-popup" style="position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.6); backdrop-filter:blur(5px); z-index:10000; display:flex; align-items:center; justify-content:center;">
+    <div style="background:rgba(255,255,255,0.9); padding:30px; border-radius:20px; width:85%; max-width:400px; text-align:center; box-shadow:0 10px 25px rgba(0,0,0,0.3);">
+        <img src="https://i.imgur.com/8Km9tLL.png" style="width:70px; border-radius:50%; margin-bottom:15px;">
+        <h2 style="color:#075e54; margin-bottom:10px;">Elyra AI ✨</h2>
+        <p style="color:#555; margin-bottom:20px;">Aap kaise chat karna chahenge?</p>
+        
+        <div id="name-form" style="display:none;">
+            <input type="text" id="u-name" placeholder="Apna Naam" style="width:100%; padding:10px; margin-bottom:10px; border:1px solid #ddd; border-radius:8px;">
+            <input type="email" id="u-email" placeholder="Apna Email" style="width:100%; padding:10px; margin-bottom:15px; border:1px solid #ddd; border-radius:8px;">
+            <button onclick="startNamedChat()" style="background:#25d366; color:white; width:100%; border:none; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold;">Shuru Karein 🚀</button>
+        </div>
+
+        <div id="initial-options">
+            <button onclick="showNameForm()" style="background:#075e54; color:white; width:100%; border:none; padding:12px; border-radius:8px; cursor:pointer; font-weight:bold; margin-bottom:10px;">Naam ke sath Chat (Special ✨)</button>
+            <button onclick="startGuestChat()" style="background:#eee; color:#333; width:100%; border:none; padding:12px; border-radius:8px; cursor:pointer;">Bina Naam ke (Guest 👤)</button>
+        </div>
+    </div>
+</div>
+  
+  
   <div id="app-container">
     <header>
       <img src="https://i.imgur.com/8Km9tLL.png" class="avatar">
