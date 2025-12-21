@@ -1,7 +1,7 @@
 import { db } from "./firebase.js"; 
 import { getSmartReply } from "./smartReply.js";
 import { 
-    collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, arrayUnion 
+    collection, addDoc, serverTimestamp, query, where, getDocs, updateDoc, arrayUnion, increment 
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const chat = document.getElementById("chat");
@@ -16,16 +16,44 @@ let pendingQuestion = localStorage.getItem("pendingQuestion") || "";
 let proactiveTimer;
 let userLang = navigator.language || "en";
 
-// --- 2. GLOBAL CONTEXT API ---
-async function getGlobalContext() {
+// --- 2. ADVANCED GEO-TRACKING & USER MANAGEMENT ---
+async function getAndSaveUser(name, email) {
     try {
         const res = await fetch('https://ipapi.co/json/');
-        const data = await res.json();
-        return { city: data.city || "Earth", country: data.country_name || "Global" };
-    } catch (e) { return { city: "Earth", country: "Global" }; }
+        const geo = await res.json();
+        
+        localStorage.setItem("userName", name);
+        localStorage.setItem("userEmail", email);
+        localStorage.setItem("userCity", geo.city || "Global");
+
+        const q = query(collection(db, "users_list"), where("email", "==", email));
+        const snap = await getDocs(q);
+
+        if (snap.empty) {
+            // Naya International User Create karein
+            await addDoc(collection(db, "users_list"), {
+                name, email,
+                city: geo.city || "Global",
+                country: geo.country_name || "Global",
+                lat: geo.latitude || 20, // Admin Map ke liye
+                lng: geo.longitude || 0,
+                visitCount: 1,
+                joinDate: new Date().toISOString(),
+                lastSeen: new Date().toISOString()
+            });
+        } else {
+            // Existing User ki visits badhayein
+            const userRef = snap.docs[0].ref;
+            await updateDoc(userRef, {
+                visitCount: increment(1),
+                lastSeen: new Date().toISOString()
+            });
+        }
+        return geo.city || "Earth";
+    } catch (e) { return "Earth"; }
 }
 
-// --- 3. LOGIN & TRANSITION (Fixed Stuck Screen) ---
+// --- 3. LOGIN INTERFACE LOGIC ---
 window.showNameForm = () => {
     document.getElementById("initial-options").style.display = "none";
     document.getElementById("name-form").style.display = "block";
@@ -35,50 +63,49 @@ window.startNamedChat = async () => {
     const name = document.getElementById("u-name").value.trim();
     const email = document.getElementById("u-email").value.trim();
     if (name && email) {
-        localStorage.setItem("userName", name);
-        localStorage.setItem("userEmail", email);
-        localStorage.setItem("chatMode", "named");
+        const city = await getAndSaveUser(name, email);
         welcomePopup.style.display = "none";
-        initiateInternationalGreeting(name, "named");
+        initiateInternationalGreeting(name, "named", city);
     } else { alert("Suno! Details toh bharo pehle.. ✨"); }
 };
 
-window.startGuestChat = () => {
-    localStorage.setItem("userName", "Dost");
-    localStorage.setItem("chatMode", "guest");
+window.startGuestChat = async () => {
+    const city = await getAndSaveUser("Dost", `guest_${Date.now()}@elyra.ai`);
     welcomePopup.style.display = "none";
-    initiateInternationalGreeting("Dost", "guest");
+    initiateInternationalGreeting("Dost", "guest", city);
 };
 
-// --- 4. INTERNATIONAL GREETING WITH RECALL ---
-async function initiateInternationalGreeting(name, mode) {
+// --- 4. ANALYTICS & GREETING ---
+async function initiateInternationalGreeting(name, mode, city) {
     if (sessionStorage.getItem("greeted")) return;
-    const context = await getGlobalContext();
+    
+    // Admin Stats ke liye entry
+    await addDoc(collection(db, "analytics"), { 
+        timestamp: serverTimestamp(), 
+        user: name,
+        platform: "International-Web" 
+    });
+
     let memoryRecall = "";
     const email = localStorage.getItem("userEmail");
-
-    if (email && email !== "guest") {
-        try {
-            const q = query(collection(db, "users_list"), where("email", "==", email));
-            const snap = await getDocs(q);
-            if (!snap.empty && snap.docs[0].data().memories) {
-                const memories = snap.docs[0].data().memories;
-                memoryRecall = ` Waise mujhe yaad hai, tumne kaha tha: "${memories[memories.length-1].text}" 😊`;
-            }
-        } catch (e) { console.error(e); }
+    if (email && !email.includes("guest")) {
+        const q = query(collection(db, "users_list"), where("email", "==", email));
+        const snap = await getDocs(q);
+        if (!snap.empty && snap.docs[0].data().memories) {
+            const memories = snap.docs[0].data().memories;
+            memoryRecall = ` Waise yaad hai, tumne kaha tha: "${memories[memories.length-1].text}" 😊`;
+        }
     }
 
     setTimeout(() => {
-        const greet = mode === "named" 
-            ? `Hlo **${name}**! ✨ Kaise ho? Sab theek in ${context.city}?${memoryRecall}` 
-            : `Hey **Dost**! 👤 Chalo baatein karte hain! Kaise ho in ${context.city}?`;
+        const greet = `Hlo **${name}**! ✨ Sab theek in ${city}?${memoryRecall}`;
         addMsg(greet, "bot");
         sessionStorage.setItem("greeted", "true");
         resetProactiveTimer();
     }, 1200);
 }
 
-// --- 5. MAIN CHAT LOGIC (Bug-Free) ---
+// --- 5. MAIN CHAT LOGIC ---
 window.send = async () => {
     const text = input.value.trim();
     if (!text) return;
@@ -115,11 +142,14 @@ window.send = async () => {
                 addMsg(finalReply, "bot");
                 conversationHistory.push({ role: "bot", text: finalReply });
             }, typingDuration);
-        } catch (e) { typing.classList.add("hidden"); addMsg("Network slow hai yaar.. 🛰️", "bot"); }
+        } catch (e) { 
+            typing.classList.add("hidden"); 
+            addMsg("Network slow hai yaar.. 🛰️", "bot"); 
+        }
     }, thinkTime);
 };
 
-// --- 6. HELPERS ---
+// --- 6. HELPERS & UTILS ---
 function addMsg(text, cls) {
     const d = document.createElement("div");
     d.className = `msg ${cls}`;
@@ -137,12 +167,12 @@ function resetProactiveTimer() {
             const name = localStorage.getItem("userName") || "Dost";
             addMsg(`Sunno **${name}**, kahan chale gaye? 🥺`, "bot");
         }
-    }, 60000); 
+    }, 90000); 
 }
 
 async function saveToGlobalMemory(text) {
     const email = localStorage.getItem("userEmail");
-    if (!email || email === "guest") return;
+    if (!email || email.includes("guest")) return;
     const triggers = ["rehta hoon", "pasand hai", "born in", "my name is"];
     if (triggers.some(t => text.toLowerCase().includes(t))) {
         const q = query(collection(db, "users_list"), where("email", "==", email));
@@ -174,7 +204,7 @@ async function handleLearning(text) {
 window.onload = () => {
     if (localStorage.getItem("userName")) {
         welcomePopup.style.display = "none";
-        initiateInternationalGreeting(localStorage.getItem("userName"), localStorage.getItem("chatMode"));
+        initiateInternationalGreeting(localStorage.getItem("userName"), "named", localStorage.getItem("userCity") || "Earth");
     }
 };
 
