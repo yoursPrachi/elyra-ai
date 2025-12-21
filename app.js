@@ -9,26 +9,23 @@ const input = document.getElementById("input");
 const typing = document.getElementById("typing");
 const welcomePopup = document.getElementById("welcome-popup");
 
-// --- 1. GLOBAL STATE & LOCALIZATION ---
+// --- 1. STATE & LOCALIZATION ---
 let conversationHistory = [];
-let userLang = navigator.language || "en"; // Detects browser language (e.g., 'en-US', 'hi-IN')
 let isLearning = localStorage.getItem("isLearning") === "true";
+let pendingQuestion = localStorage.getItem("pendingQuestion") || "";
 let proactiveTimer;
+let userLang = navigator.language || "en";
 
-// --- 2. INTERNATIONAL CONTEXT API ---
+// --- 2. GLOBAL CONTEXT API ---
 async function getGlobalContext() {
     try {
         const res = await fetch('https://ipapi.co/json/');
         const data = await res.json();
-        return { 
-            city: data.city || "Earth", 
-            country: data.country_name || "Global",
-            currency: data.currency || "USD"
-        };
+        return { city: data.city || "Earth", country: data.country_name || "Global" };
     } catch (e) { return { city: "Earth", country: "Global" }; }
 }
 
-// --- 3. LOGIN & TRANSITION (International Support) ---
+// --- 3. LOGIN & TRANSITION (Fixed Stuck Screen) ---
 window.showNameForm = () => {
     document.getElementById("initial-options").style.display = "none";
     document.getElementById("name-form").style.display = "block";
@@ -40,36 +37,48 @@ window.startNamedChat = async () => {
     if (name && email) {
         localStorage.setItem("userName", name);
         localStorage.setItem("userEmail", email);
+        localStorage.setItem("chatMode", "named");
         welcomePopup.style.display = "none";
-        initiateInternationalGreeting(name);
-    } else { alert("Please fill your details! ✨"); }
+        initiateInternationalGreeting(name, "named");
+    } else { alert("Suno! Details toh bharo pehle.. ✨"); }
 };
 
-// --- 4. GLOBAL SMART GREETING ---
-async function initiateInternationalGreeting(name) {
+window.startGuestChat = () => {
+    localStorage.setItem("userName", "Dost");
+    localStorage.setItem("chatMode", "guest");
+    welcomePopup.style.display = "none";
+    initiateInternationalGreeting("Dost", "guest");
+};
+
+// --- 4. INTERNATIONAL GREETING WITH RECALL ---
+async function initiateInternationalGreeting(name, mode) {
     if (sessionStorage.getItem("greeted")) return;
     const context = await getGlobalContext();
-    const hour = new Date().getHours();
-    
-    // Time-zone based greeting
-    let timeGreet = hour < 12 ? "Good Morning" : hour < 18 ? "Good Afternoon" : "Good Evening";
+    let memoryRecall = "";
+    const email = localStorage.getItem("userEmail");
 
-    // Dynamic Multi-lingual Welcome
-    const welcomeMsgs = {
-        "en": `${timeGreet}, **${name}**! ✨ Hope you're enjoying the day in ${context.city}.`,
-        "hi": `Namaste **${name}**! ✨ ${context.city} mein sab kaisa chal raha hai?`,
-        "es": `¡Hola **${name}**! ✨ ¿Cómo va todo en ${context.city}?`,
-        "fr": `Bonjour **${name}**! ✨ Comment ça va à ${context.city}?`
-    };
+    if (email && email !== "guest") {
+        try {
+            const q = query(collection(db, "users_list"), where("email", "==", email));
+            const snap = await getDocs(q);
+            if (!snap.empty && snap.docs[0].data().memories) {
+                const memories = snap.docs[0].data().memories;
+                memoryRecall = ` Waise mujhe yaad hai, tumne kaha tha: "${memories[memories.length-1].text}" 😊`;
+            }
+        } catch (e) { console.error(e); }
+    }
 
-    const langCode = userLang.split('-')[0]; // Extract 'en' from 'en-US'
-    const finalGreet = welcomeMsgs[langCode] || welcomeMsgs["en"];
-    
-    addMsg(finalGreet, "bot");
-    sessionStorage.setItem("greeted", "true");
+    setTimeout(() => {
+        const greet = mode === "named" 
+            ? `Hlo **${name}**! ✨ Kaise ho? Sab theek in ${context.city}?${memoryRecall}` 
+            : `Hey **Dost**! 👤 Chalo baatein karte hain! Kaise ho in ${context.city}?`;
+        addMsg(greet, "bot");
+        sessionStorage.setItem("greeted", "true");
+        resetProactiveTimer();
+    }, 1200);
 }
 
-// --- 5. MAIN CHAT LOGIC (Global Processing) ---
+// --- 5. MAIN CHAT LOGIC (Bug-Free) ---
 window.send = async () => {
     const text = input.value.trim();
     if (!text) return;
@@ -77,39 +86,43 @@ window.send = async () => {
     input.value = "";
     addMsg(text, "user");
     conversationHistory.push({ role: "user", text });
-    if (conversationHistory.length > 8) conversationHistory.shift();
     
     saveToGlobalMemory(text);
 
-    typing.classList.remove("hidden");
-    
-    // Neural Think-Delay Simulation based on complexity
+    if (isLearning) {
+        handleLearning(text);
+        return;
+    }
+
     const thinkTime = Math.random() * (1200 - 600) + 600; 
     setTimeout(async () => {
+        typing.classList.remove("hidden");
         try {
             const botReply = await getSmartReply(text, conversationHistory);
-            
             let replyText = (typeof botReply === "object") ? botReply.msg : botReply;
-            
-            // International Vibe (Random multi-lingual suffixes)
-            const suffixes = [" ✨", " 🙈", " 😊", " 🌍", " 💫"];
-            const finalReply = replyText + suffixes[Math.floor(Math.random() * suffixes.length)];
+            let isNeedLearning = (typeof botReply === "object" && botReply.status === "NEED_LEARNING");
 
-            typing.classList.add("hidden");
-            addMsg(finalReply, "bot");
-            conversationHistory.push({ role: "bot", text: finalReply });
-        } catch (e) { 
-            typing.classList.add("hidden"); 
-            addMsg("Satellite connection is a bit slow... 🛰️", "bot"); 
-        }
+            const typingDuration = Math.min(Math.max(replyText.length * 30, 1200), 4500);
+            setTimeout(() => {
+                typing.classList.add("hidden");
+                if (isNeedLearning) {
+                    isLearning = true;
+                    pendingQuestion = botReply.question;
+                    localStorage.setItem("isLearning", "true");
+                }
+                const girlHabits = [" ✨", " 🙈", " na?", " 😊"];
+                const finalReply = replyText + (Math.random() > 0.7 ? girlHabits[Math.floor(Math.random() * girlHabits.length)] : "");
+                addMsg(finalReply, "bot");
+                conversationHistory.push({ role: "bot", text: finalReply });
+            }, typingDuration);
+        } catch (e) { typing.classList.add("hidden"); addMsg("Network slow hai yaar.. 🛰️", "bot"); }
     }, thinkTime);
 };
 
-// --- 6. UTILS (Message Formatting) ---
+// --- 6. HELPERS ---
 function addMsg(text, cls) {
     const d = document.createElement("div");
     d.className = `msg ${cls}`;
-    // Formats time according to user's local standard
     const timeStr = new Intl.DateTimeFormat(userLang, { hour: '2-digit', minute: '2-digit' }).format(new Date());
     d.innerHTML = `<div class="msg-content">${text}</div><div class="time">${timeStr}</div>`;
     chat.appendChild(d);
@@ -120,17 +133,48 @@ function addMsg(text, cls) {
 function resetProactiveTimer() {
     clearTimeout(proactiveTimer);
     proactiveTimer = setTimeout(() => {
-        if (!document.hidden) {
+        if (!isLearning && !document.hidden) {
             const name = localStorage.getItem("userName") || "Dost";
-            addMsg(`Hey **${name}**, are you still there? 🥺`, "bot");
+            addMsg(`Sunno **${name}**, kahan chale gaye? 🥺`, "bot");
         }
-    }, 90000); 
+    }, 60000); 
+}
+
+async function saveToGlobalMemory(text) {
+    const email = localStorage.getItem("userEmail");
+    if (!email || email === "guest") return;
+    const triggers = ["rehta hoon", "pasand hai", "born in", "my name is"];
+    if (triggers.some(t => text.toLowerCase().includes(t))) {
+        const q = query(collection(db, "users_list"), where("email", "==", email));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+            await updateDoc(snap.docs[0].ref, {
+                memories: arrayUnion({ text, date: new Date().toISOString() })
+            });
+        }
+    }
+}
+
+async function handleLearning(text) {
+    typing.classList.remove("hidden");
+    try {
+        await addDoc(collection(db, "temp_learning"), {
+            question: pendingQuestion,
+            answer: text,
+            learnedFrom: localStorage.getItem("userName"),
+            timestamp: serverTimestamp()
+        });
+        typing.classList.add("hidden");
+        addMsg(`Theek hai, maine yaad kar liya! 🎓`, "bot");
+        isLearning = false;
+        localStorage.removeItem("isLearning");
+    } catch (e) { console.error(e); }
 }
 
 window.onload = () => {
     if (localStorage.getItem("userName")) {
         welcomePopup.style.display = "none";
-        initiateInternationalGreeting(localStorage.getItem("userName"));
+        initiateInternationalGreeting(localStorage.getItem("userName"), localStorage.getItem("chatMode"));
     }
 };
 
