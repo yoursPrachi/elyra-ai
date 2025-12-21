@@ -8,20 +8,16 @@ const typing = document.getElementById("typing");
 
 // --- Memory & State Management ---
 let userName = localStorage.getItem("userName") || "";
+let chatMode = localStorage.getItem("chatMode") || ""; // named ya guest
 let isLearning = localStorage.getItem("isLearning") === "true";
 let pendingQuestion = localStorage.getItem("pendingQuestion") || "";
-let askingName = false;
 
-// Helpers for Multi-language & Global Presence
+// Location Helper
 async function getUserContext() {
     try {
         const response = await fetch('https://ipapi.co/json/');
         const data = await response.json();
-        return {
-            country: data.country_name || "the World",
-            city: data.city || "your place",
-            lang: navigator.language.split('-')[0]
-        };
+        return { country: data.country_name || "the World", city: data.city || "your place", lang: navigator.language.split('-')[0] };
     } catch (e) {
         return { country: "the World", lang: "en", city: "your place" };
     }
@@ -37,28 +33,60 @@ function addMsg(text, cls) {
     chat.scrollTop = chat.scrollHeight;
 }
 
-// --- Dynamic Global Greeting ---
-window.onload = async () => {
+// --- POPUP FUNCTIONS ---
+window.showNameForm = () => {
+    document.getElementById("initial-options").style.display = "none";
+    document.getElementById("name-form").style.display = "block";
+};
+
+window.startNamedChat = async () => {
+    const name = document.getElementById("u-name").value.trim();
+    const email = document.getElementById("u-email").value.trim();
+    if (name && email) {
+        localStorage.setItem("userName", name);
+        localStorage.setItem("chatMode", "named");
+        document.getElementById("welcome-popup").style.display = "none";
+        
+        // Save to Database
+        try {
+            await addDoc(collection(db, "users_list"), { name, email, timestamp: serverTimestamp() });
+        } catch (e) { console.error(e); }
+        
+        initiateGreeting(name, "named");
+    } else { alert("Naam aur Email zaroori hain! 😊"); }
+};
+
+window.startGuestChat = () => {
+    localStorage.setItem("userName", "Dost");
+    localStorage.setItem("chatMode", "guest");
+    document.getElementById("welcome-popup").style.display = "none";
+    initiateGreeting("Dost", "guest");
+};
+
+async function initiateGreeting(name, mode) {
     const context = await getUserContext();
-    
-    if (!userName) {
-        setTimeout(() => {
-            addMsg(`Hello! Main Elyra AI hoon. ✨ Main aapse ${context.city}, ${context.country} mein mil kar bohot khush hoon!`, "bot");
-            setTimeout(() => {
-                addMsg("Main aapka naam jaan sakti hoon?", "bot");
-                askingName = true;
-            }, 1000);
-        }, 1500);
-    } else {
-        setTimeout(() => {
-            let greet = `Welcome back, ${userName}! 😍 Sending love to ${context.city}!`;
-            if (context.lang === "hi") greet = `Welcome back ${userName}! Kaise hain aap? ${context.city} mein mausam kaisa hai? 🇮🇳✨`;
-            addMsg(greet, "bot");
-        }, 1000);
+    setTimeout(() => {
+        let greet = "";
+        if (mode === "named") {
+            greet = `Swaagat hai **${name}**! ✨ Aap ${context.city} se jud rahe hain, ye jaan kar bahut khushi hui. Bataiye main aapki kya madad kar sakti hoon?`;
+        } else {
+            greet = `Hey **Dost**! 👤 Kaise ho? Chalo aaj bina kisi formality ke dher saari baatein karte hain! ${context.city} mein sab badiya?`;
+        }
+        addMsg(greet, "bot");
+    }, 1000);
+}
+
+// Check on Load
+window.onload = () => {
+    if (localStorage.getItem("userName")) {
+        document.getElementById("welcome-popup").style.display = "none";
+        const name = localStorage.getItem("userName");
+        const mode = localStorage.getItem("chatMode");
+        initiateGreeting(name, mode);
     }
 };
 
-// --- Chat Logic ---
+// --- Main Chat Logic ---
 window.send = async () => {
     const text = input.value.trim();
     if (!text) return;
@@ -66,20 +94,6 @@ window.send = async () => {
     input.value = "";
     addMsg(text, "user");
 
-    // 1. Handle Name Discovery
-    if (askingName) {
-        userName = text;
-        localStorage.setItem("userName", userName);
-        askingName = false;
-        typing.classList.remove("hidden");
-        setTimeout(() => {
-            typing.classList.add("hidden");
-            addMsg(`Wah! ${userName}, kitna pyara naam hai aapka. ❤️ Chalo ab baatein karte hain!`, "bot");
-        }, 1000);
-        return;
-    }
-
-    // 2. Handle Learning Mode
     if (isLearning) {
         typing.classList.remove("hidden");
         try {
@@ -87,22 +101,18 @@ window.send = async () => {
                 question: pendingQuestion,
                 answer: text.toLowerCase(),
                 timestamp: serverTimestamp(),
-                learnedFrom: userName,
-                location: localStorage.getItem("userCity") || "Unknown"
+                learnedFrom: localStorage.getItem("userName")
             });
-            
             setTimeout(() => {
                 typing.classList.add("hidden");
-                addMsg(`Theek hai ${userName}, maine yaad kar liya! 😍 Sikhane ke liye thnx!`, "bot");
+                addMsg(`Theek hai, maine yaad kar liya! 😍 Sikhane ke liye shukriya.`, "bot");
                 isLearning = false;
                 localStorage.removeItem("isLearning");
-                localStorage.removeItem("pendingQuestion");
             }, 1000);
-        } catch (e) { console.error("Learning Error:", e); }
+        } catch (e) { console.error(e); }
         return;
     }
 
-    // 3. Normal Smart Chat
     typing.classList.remove("hidden");
     const botReply = await getSmartReply(text);
 
@@ -112,12 +122,16 @@ window.send = async () => {
             isLearning = true;
             pendingQuestion = botReply.question;
             localStorage.setItem("isLearning", "true");
-            localStorage.setItem("pendingQuestion", pendingQuestion);
             addMsg(botReply.msg, "bot");
         } else {
+            // Personal Touch: Guest mode mein casual, Named mode mein Respectful
             let finalMsg = botReply;
-            // 30% chance to include name for personal touch
-            if (Math.random() > 0.7) finalMsg = `${userName}, ${botReply}`;
+            const mode = localStorage.getItem("chatMode");
+            const name = localStorage.getItem("userName");
+            
+            if (Math.random() > 0.7) {
+                finalMsg = mode === "named" ? `${name} ji, ${botReply}` : `${name}, ${botReply}`;
+            }
             addMsg(finalMsg, "bot");
         }
     }, 1200);
