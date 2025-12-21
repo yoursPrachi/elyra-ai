@@ -5,19 +5,18 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 let brainCache = null;
+let autoLearnQueue = {}; // Repetitive unknown questions track karne ke liye
 
-// --- 1. Long-Term Memory Recall Logic ---
+// --- 1. Long-Term Memory Recall ---
 async function getPersonalContext(text) {
     const email = localStorage.getItem("userEmail");
     if (!email) return null;
-
     try {
         const q = query(collection(db, "users_list"), where("email", "==", email));
         const snap = await getDocs(q);
         if (!snap.empty) {
             const userData = snap.docs[0].data();
-            // Agar user ne apni memory se juda kuch pucha
-            if (text.includes("mera") || text.includes("my")) {
+            if (text.includes("mera") || text.includes("my") || text.includes("yaad")) {
                 return userData.memories || [];
             }
         }
@@ -51,32 +50,28 @@ function getSimilarity(s1, s2) {
     return (longer.length - editDistance(longer, shorter)) / parseFloat(longer.length);
 }
 
-// --- 3. Main Global Smart Reply with Context ---
+// --- 3. Main Global Smart Reply with Proactive Logic ---
 export async function getSmartReply(text, history = []) {
     const lowerInput = text.toLowerCase().trim();
     await authReady;
 
-    // A. Personal Long-Term Memory Recall
+    // A. Filter Short/Filler Words (Accuracy Fix)
+    const fillers = { "ok": "Theek hai! 👍", "hmm": "Hmm.. aur bataiye?", "acha": "Achha, sahi hai.", "wow": "Shukriya! 😍" };
+    if (fillers[lowerInput] || lowerInput.length < 3) {
+        return fillers[lowerInput] || "Theek hai! 😊";
+    }
+
+    // B. Proactive Memory Recall
     if (lowerInput.includes("yaad") || lowerInput.includes("remember")) {
         const memories = await getPersonalContext(lowerInput);
         if (memories && memories.length > 0) {
             const lastThing = memories[memories.length - 1].text;
-            return `Haan! Mujhe yaad hai aapne kaha tha: "${lastThing}" 😊`;
-        }
-    }
-
-    // B. Short-Term Conversation Context
-    if (history.length > 0) {
-        const lastUserMsg = history[history.length - 1]?.text.toLowerCase();
-        if (lowerInput === "kyun" || lowerInput === "why") {
-            return "Main abhi is par aur seekh rahi hoon, par context ke hisab se yeh dilchasp hai! ✨";
+            return `Haan! Mujhe yaad hai aapne kaha tha: "${lastThing}". Kya is baare mein kuch aur batana chahenge? 😊`;
         }
     }
 
     // C. Instant Pre-Replies
-    if (preReplies[lowerInput]) {
-        return preReplies[lowerInput];
-    }
+    if (preReplies[lowerInput]) return preReplies[lowerInput];
 
     try {
         // D. Cache Brain (Top 100 Trending)
@@ -97,22 +92,29 @@ export async function getSmartReply(text, history = []) {
             }
         });
 
-        if (highestScore > 0.70) {
+        if (highestScore > 0.68) {
             const docRef = doc(db, "brain", bestMatch.id);
             updateDoc(docRef, { hitCount: increment(1) }).catch(e => console.log(e));
-
             const answers = bestMatch.answers || [bestMatch.answer];
             return answers[Math.floor(Math.random() * answers.length)];
         }
 
-        // E. Learning Mode
-        return {
-            status: "NEED_LEARNING",
-            question: lowerInput,
-            msg: "Mmm, ye mere liye naya hai! Kya tum mujhe iska sahi jawab sikha sakte ho? 😊"
-        };
+        // E. Self-Learning Pattern Detection
+        // Agar koi anjaan sawal 3 baar pucha jaye, toh bot proactive hokar seekhega
+        autoLearnQueue[lowerInput] = (autoLearnQueue[lowerInput] || 0) + 1;
+        
+        if (autoLearnQueue[lowerInput] >= 3 || lowerInput.length > 15) {
+            return {
+                status: "NEED_LEARNING",
+                question: lowerInput,
+                msg: "Main dekh rahi hoon kaafi log ye pooch rahe hain. Kya aap mujhe iska ek sahi jawab sikha sakte ho? 😊"
+            };
+        }
+
+        return "Mmm, main samajh nahi paayi. Thoda vistaar mein samjhaiye? ✨";
+
     } catch (e) {
         console.error("Global Error:", e);
-        return "🛰️ Satellite connection re-establishing...";
+        return "🛰️ Connection issue... Let's try again.";
     }
 }
