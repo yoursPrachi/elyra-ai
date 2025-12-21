@@ -1,21 +1,37 @@
 import { db, authReady } from "./firebase.js";
 import { collection, query, where, getDocs, limit } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-// Unknown questions ke liye smart responses
-const smartFallbacks = [
-    "Hmm, ye sawal thoda gehra hai! 🤔 Kya tum mujhe iska sahi jawab bata sakte ho?",
-    "Arre! Iska jawab toh mere digital dimaag se nikal gaya. 😅 Tum hi sikha do na?",
-    "Interesting sawal hai! ✨ Par afsos mujhe iska jawab nahi pata. Batao iska reply kya hona chahiye?",
-    "Oh! Lagta hai main ye wali class miss kar gayi. 😂 Kya tum mujhe iska answer bataoge?",
-    "Tumhari baatein hamesha dimag ghumane wali hoti hain! 🧠 Iska jawab kya hoga?"
-];
+// Multi-language Greetings & Context
+const globalContext = {
+    "en": {
+        "hello": ["Hello! How can I help you today? 🌎", "Hi! Elyra here, nice to meet you!"],
+        "who are you": ["I am Elyra, your global AI friend. ✨"],
+        "fallback": "That's interesting! I'm still learning global languages. Can you teach me what that means?"
+    },
+    "es": { // Spanish
+        "hola": ["¡Hola! ¿Cómo estás? 🇪🇸", "¡Hola! Soy Elyra AI."],
+        "fallback": "¡Qué interesante! Estoy aprendiendo español. ¿Qué significa eso?"
+    },
+    "ar": { // Arabic
+        "marhaba": ["مرحباً! كيف حالك؟ 🇸🇦", "أهلاً بك، أنا إليرا."],
+        "fallback": "هذا ممتع! أنا أتعلم اللغة العربية. ماذا يعني ذلك؟"
+    }
+};
 
-export async function getSmartReply(text) {
+export async function getSmartReply(text, lang = "hi") {
     try {
         const t = text.toLowerCase().trim();
-        await authReady; 
+        await authReady;
 
-        // 1. Brain search
+        // 1. Global Context Check (If user speaks English/Spanish/Arabic)
+        for (let code in globalContext) {
+            if (globalContext[code][t]) {
+                const res = globalContext[code][t];
+                return res[Math.floor(Math.random() * res.length)];
+            }
+        }
+
+        // 2. Database Brain Search (Local & Global)
         const q = query(collection(db, "brain"), where("question", "==", t), limit(1));
         const snap = await getDocs(q);
 
@@ -25,16 +41,13 @@ export async function getSmartReply(text) {
             return answers[Math.floor(Math.random() * answers.length)];
         }
 
-        // 2. Fallback: Agar jawab nahi mila toh random smart reply pick karein
-        const fallbackMsg = smartFallbacks[Math.floor(Math.random() * smartFallbacks.length)];
-        
+        // 3. Smart Fallback based on Detection
         return {
             status: "NEED_LEARNING",
             question: t,
-            msg: fallbackMsg
+            msg: "I'm still learning this part of the world! 🌍 Kya tum mujhe iska sahi jawab bata sakte ho?"
         };
     } catch (e) {
-        console.error("Fetch Error:", e);
-        return "Network thoda nakhre kar raha hai, phir se try karo! 📶";
+        return "Connecting to global servers... 🛰️";
     }
 }
