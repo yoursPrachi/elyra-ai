@@ -8,18 +8,18 @@ const typing = document.getElementById("typing");
 
 // --- Memory & State Management ---
 let userName = localStorage.getItem("userName") || "";
-let chatMode = localStorage.getItem("chatMode") || ""; // named ya guest
+let chatMode = localStorage.getItem("chatMode") || ""; 
 let isLearning = localStorage.getItem("isLearning") === "true";
 let pendingQuestion = localStorage.getItem("pendingQuestion") || "";
 
-// Location Helper
+// Location Helper (Ab ye hamesha fetch nahi hoga, sirf zarurat par)
 async function getUserContext() {
     try {
         const response = await fetch('https://ipapi.co/json/');
         const data = await response.json();
-        return { country: data.country_name || "the World", city: data.city || "your place", lang: navigator.language.split('-')[0] };
+        return { country: data.country_name || "the World", city: data.city || "your place" };
     } catch (e) {
-        return { country: "the World", lang: "en", city: "your place" };
+        return { country: "the World", city: "your place" };
     }
 }
 
@@ -45,9 +45,9 @@ window.startNamedChat = async () => {
     if (name && email) {
         localStorage.setItem("userName", name);
         localStorage.setItem("chatMode", "named");
+        localStorage.setItem("isNewUser", "true"); // Flag for first greeting
         document.getElementById("welcome-popup").style.display = "none";
         
-        // Save to Database
         try {
             await addDoc(collection(db, "users_list"), { name, email, timestamp: serverTimestamp() });
         } catch (e) { console.error(e); }
@@ -59,20 +59,33 @@ window.startNamedChat = async () => {
 window.startGuestChat = () => {
     localStorage.setItem("userName", "Dost");
     localStorage.setItem("chatMode", "guest");
+    localStorage.setItem("isNewUser", "true");
     document.getElementById("welcome-popup").style.display = "none";
     initiateGreeting("Dost", "guest");
 };
 
+// --- IMPROVED GREETING LOGIC ---
 async function initiateGreeting(name, mode) {
-    const context = await getUserContext();
-    setTimeout(() => {
+    // Check if session already greeted (to prevent greeting on every refresh)
+    if (sessionStorage.getItem("greeted")) return;
+
+    setTimeout(async () => {
         let greet = "";
-        if (mode === "named") {
-            greet = `Swaagat hai **${name}**! ✨ Aap ${context.city} se jud rahe hain, ye jaan kar bahut khushi hui. Bataiye main aapki kya madad kar sakti hoon?`;
+        const isNew = localStorage.getItem("isNewUser") === "true";
+
+        if (isNew) {
+            const context = await getUserContext();
+            greet = mode === "named" 
+                ? `Swaagat hai **${name}**! ✨ Aap ${context.city} se jud rahe hain, jaan kar khushi hui. Bataiye main aapki kya madad kar sakti hoon?` 
+                : `Hey **Dost**! 👤 Kaise ho? Chalo aaj dher saari baatein karte hain!`;
+            localStorage.removeItem("isNewUser"); // First time greeting done
         } else {
-            greet = `Hey **Dost**! 👤 Kaise ho? Chalo aaj bina kisi formality ke dher saari baatein karte hain! ${context.city} mein sab badiya?`;
+            // Short Welcome Back for returning users
+            greet = `Welcome back, **${name}**! 😍 Khushi hui aapko dubara dekh kar. Kaise hain aap?`;
         }
+        
         addMsg(greet, "bot");
+        sessionStorage.setItem("greeted", "true"); // Session mark
     }, 1000);
 }
 
@@ -124,12 +137,12 @@ window.send = async () => {
             localStorage.setItem("isLearning", "true");
             addMsg(botReply.msg, "bot");
         } else {
-            // Personal Touch: Guest mode mein casual, Named mode mein Respectful
             let finalMsg = botReply;
             const mode = localStorage.getItem("chatMode");
             const name = localStorage.getItem("userName");
             
-            if (Math.random() > 0.7) {
+            // Randomly use user name for personal touch
+            if (Math.random() > 0.8) {
                 finalMsg = mode === "named" ? `${name} ji, ${botReply}` : `${name}, ${botReply}`;
             }
             addMsg(finalMsg, "bot");
