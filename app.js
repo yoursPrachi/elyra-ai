@@ -1,4 +1,5 @@
-import { db } from "./firebase.js";
+// authReady ko import karna zaroori hai agar aapne firebase.js mein banaya hai
+import { db } from "./firebase.js"; 
 import { getSmartReply } from "./smartReply.js";
 import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
@@ -12,7 +13,7 @@ let chatMode = localStorage.getItem("chatMode") || "";
 let isLearning = localStorage.getItem("isLearning") === "true";
 let pendingQuestion = localStorage.getItem("pendingQuestion") || "";
 
-// Smart International Context
+// Location Helper
 async function getUserContext() {
     try {
         const response = await fetch('https://ipapi.co/json/');
@@ -20,73 +21,92 @@ async function getUserContext() {
         return { 
             country: data.country_name || "Global", 
             city: data.city || "Earth",
-            currency: data.currency || "USD",
-            timezone: data.timezone || "UTC",
-            lang: navigator.language || "en-US" // Browser language detect karein
+            timezone: data.timezone || "UTC"
         };
     } catch (e) {
-        return { country: "Global", city: "Earth", lang: "en-US", timezone: "UTC" };
+        return { country: "Global", city: "Earth", timezone: "UTC" };
     }
-}
-
-// Global Time-Aware Greeting
-function getGlobalGreeting(timezone) {
-    const options = { timeZone: timezone, hour: 'numeric', hour12: false };
-    const localHour = new Intl.DateTimeFormat('en-US', options).format(new Date());
-    
-    if (localHour >= 5 && localHour < 12) return "Good Morning ☀️";
-    if (localHour >= 12 && localHour < 17) return "Good Afternoon 🌤️";
-    if (localHour >= 17 && localHour < 21) return "Good Evening ☕";
-    return "Good Night 🌙";
 }
 
 function addMsg(text, cls) {
     const d = document.createElement("div");
     d.className = `msg ${cls}`;
-    
-    // International Date/Time Formatting
-    const timeStr = new Intl.DateTimeFormat(navigator.language, {
-        hour: '2-digit', 
-        minute: '2-digit'
-    }).format(new Date());
-
+    const timeStr = new Intl.DateTimeFormat(navigator.language, { hour: '2-digit', minute: '2-digit' }).format(new Date());
     const ticks = cls === 'user' ? '<span class="ticks">✓✓</span>' : '';
     d.innerHTML = `<div class="msg-content">${text}</div><div class="time">${timeStr} ${ticks}</div>`;
     chat.appendChild(d);
     chat.scrollTop = chat.scrollHeight;
 }
 
-// --- 2. INTERNATIONAL GREETING LOGIC ---
+// --- 2. LOGIN FUNCTIONS (Fixed for Global Access) ---
+window.showNameForm = () => {
+    document.getElementById("initial-options").style.display = "none";
+    document.getElementById("name-form").style.display = "block";
+};
+
+window.startNamedChat = async () => {
+    const nameInput = document.getElementById("u-name");
+    const emailInput = document.getElementById("u-email");
+    const name = nameInput ? nameInput.value.trim() : "";
+    const email = emailInput ? emailInput.value.trim() : "";
+
+    if (name && email) {
+        // UI Pehle update karein taaki user ko delay na lage
+        localStorage.setItem("userName", name);
+        localStorage.setItem("chatMode", "named");
+        localStorage.setItem("isNewUser", "true");
+        localStorage.setItem("visitCount", "1");
+        document.getElementById("welcome-popup").style.display = "none";
+
+        try {
+            // Background mein data save karein
+            await addDoc(collection(db, "users_list"), { 
+                name, email, visits: 1, timestamp: serverTimestamp() 
+            });
+        } catch (e) { 
+            console.error("Firestore Error:", e); // Check console if this fails
+        }
+        initiateGreeting(name, "named");
+    } else { 
+        alert("Naam aur Email zaroori hain! 😊"); 
+    }
+};
+
+window.startGuestChat = () => {
+    localStorage.setItem("userName", "Dost");
+    localStorage.setItem("chatMode", "guest");
+    localStorage.setItem("isNewUser", "true");
+    localStorage.setItem("visitCount", "1");
+    document.getElementById("welcome-popup").style.display = "none";
+    initiateGreeting("Dost", "guest");
+};
+
+// --- 3. INTERNATIONAL GREETING LOGIC ---
 async function initiateGreeting(name, mode) {
     if (sessionStorage.getItem("greeted")) return;
 
     const context = await getUserContext();
-    const timeGreet = getGlobalGreeting(context.timezone);
-
-    setTimeout(async () => {
-        let greet = "";
-        const visits = parseInt(localStorage.getItem("visitCount") || "1");
-        const isNew = localStorage.getItem("isNewUser") === "true";
-
-        if (isNew) {
-            // New Global User Greeting
-            greet = `${timeGreet} **${name}**! ✨ It's wonderful to connect with someone from ${context.city}, ${context.country}. I'm Elyra, your Global AI. How can I assist you today?`;
-            localStorage.removeItem("isNewUser");
-        } else {
-            // Returning International User
-            if (visits > 10) {
-                greet = `👑 **VIP Recognition**: Welcome back, **${name}**! Hope your day in ${context.city} is going great. ${timeGreet}!`;
-            } else {
-                greet = `Hello again, **${name}**! 😍 Wishing you a pleasant ${timeGreet.split(' ')[1]}!`;
-            }
-        }
+    
+    setTimeout(() => {
+        let greet = mode === "named" 
+            ? `Welcome **${name}**! ✨ Connecting from ${context.city}. How can I help you?`
+            : `Hey **Dost**! 👤 Let's chat. How's it going in ${context.city}?`;
         
         addMsg(greet, "bot");
         sessionStorage.setItem("greeted", "true");
-    }, 1200);
+    }, 1000);
 }
 
-// --- 3. MAIN CHAT LOGIC (Global Optimization) ---
+// Check on Load
+window.onload = () => {
+    if (localStorage.getItem("userName")) {
+        const popup = document.getElementById("welcome-popup");
+        if(popup) popup.style.display = "none";
+        initiateGreeting(localStorage.getItem("userName"), localStorage.getItem("chatMode"));
+    }
+};
+
+// --- 4. MAIN CHAT LOGIC ---
 window.send = async () => {
     const text = input.value.trim();
     if (!text) return;
@@ -94,50 +114,16 @@ window.send = async () => {
     input.value = "";
     addMsg(text, "user");
 
-    if (isLearning) {
-        typing.classList.remove("hidden");
-        try {
-            await addDoc(collection(db, "temp_learning"), {
-                question: pendingQuestion,
-                answer: text,
-                learnedFrom: localStorage.getItem("userName"),
-                region: (await getUserContext()).country, // Region track karein
-                timestamp: serverTimestamp()
-            });
-            setTimeout(() => {
-                typing.classList.add("hidden");
-                addMsg(`I've noted that down! 🌍 Thank you for helping me grow globally.`, "bot");
-                isLearning = false;
-                localStorage.removeItem("isLearning");
-            }, 1000);
-        } catch (e) { console.error(e); }
-        return;
-    }
-
     typing.classList.remove("hidden");
-    const botReply = await getSmartReply(text);
-
-    // International Standard: Human-like dynamic typing speed
-    const dynamicDelay = Math.min(Math.max(botReply.length * 30, 1200), 4000);
-
-    setTimeout(() => {
-        typing.classList.add("hidden");
-        if (typeof botReply === "object" && botReply.status === "NEED_LEARNING") {
-            isLearning = true;
-            pendingQuestion = botReply.question;
-            localStorage.setItem("isLearning", "true");
-            addMsg(botReply.msg, "bot");
-        } else {
+    try {
+        const botReply = await getSmartReply(text);
+        setTimeout(() => {
+            typing.classList.add("hidden");
             addMsg(botReply, "bot");
-        }
-    }, dynamicDelay);
-};
-
-// ... login functions ...
-window.onload = () => {
-    if (localStorage.getItem("userName")) {
-        document.getElementById("welcome-popup").style.display = "none";
-        initiateGreeting(localStorage.getItem("userName"), localStorage.getItem("chatMode"));
+        }, 1200);
+    } catch (e) {
+        typing.classList.add("hidden");
+        addMsg("Connection issue... 🛰️", "bot");
     }
 };
 
