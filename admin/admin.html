@@ -3,26 +3,25 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elyra Admin - Global Dashboard</title>
+    <title>Elyra Admin - LIVE</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <style>
-        :root { --primary: #075e54; --secondary: #25d366; --bg: #f0f2f5; }
-        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 15px; }
-        .header { background: var(--primary); color: white; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 25px; }
-        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
-        .stat-card { background: white; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-bottom: 4px solid var(--primary); }
-        .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        #map { height: 400px; border-radius: 12px; border: 1px solid #ddd; width: 100%; background: #eee; }
-        .table-wrapper { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+        /* Forcefully Resetting Everything */
+        html, body { background: #f0f2f5 !important; margin: 0; padding: 15px; color: #333; }
+        #admin-login { display: none !important; visibility: hidden !important; } /* Purana login screen khatam */
+        #dashboard-content { display: block !important; }
+        
+        .header { background: #075e54; color: white; padding: 20px; border-radius: 12px; text-align: center; }
+        .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-top: 20px; }
+        .stat-card { background: white; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 4px 10px rgba(0,0,0,0.1); border-bottom: 4px solid #075e54; }
+        #map { height: 400px; border-radius: 12px; margin-top: 25px; border: 1px solid #ccc; background: #ddd; }
     </style>
 </head>
 <body>
 
 <div id="dashboard-content">
     <div class="header">
-        <h2>Elyra AI - Global Admin Dashboard 🌍</h2>
+        <h2>Elyra AI - Global Admin 🌍</h2>
     </div>
 
     <div class="stats-grid">
@@ -31,20 +30,7 @@
         <div class="stat-card"><h4>Total Visits 🌍</h4><h2 id="total-visits">0</h2></div>
     </div>
 
-    <div class="card">
-        <h3>User Presence Map 🗺️</h3>
-        <div id="map"></div>
-    </div>
-
-    <div class="card">
-        <h3>Registered Users</h3>
-        <div class="table-wrapper">
-            <table>
-                <thead><tr><th>Name</th><th>Email</th><th>Visits</th><th>Last Activity</th></tr></thead>
-                <tbody id="user-list-table"></tbody>
-            </table>
-        </div>
-    </div>
+    <div id="map"></div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
