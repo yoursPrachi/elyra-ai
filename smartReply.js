@@ -1,14 +1,18 @@
 import { db, authReady } from "./firebase.js";
+import { preReplies } from "./preReplies.js"; // Aapka local pre-replies file
 import { 
     collection, 
     getDocs, 
     doc, 
     updateDoc, 
-    increment 
+    increment,
+    query,
+    orderBy,
+    limit 
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-// --- 1. Memory Cache (Server delay hatane ke liye) ---
-let brainCache = null;
+// --- Memory Cache ---
+let brainCache = null; 
 
 const spellFix = { "hlo": "hello", "kese": "kaise", "u": "you", "r": "are", "ha": "haa" };
 
@@ -56,52 +60,60 @@ function getSimilarity(s1, s2) {
     return (longer.length - editDistance(longer, shorter)) / parseFloat(longer.length);
 }
 
-// --- 3. Optimized Reply Logic ---
+// --- Main Optimized Logic ---
 export async function getSmartReply(text) {
     const userMood = detectMood(text); 
     const correctedInput = autoCorrect(text.trim());
+    const lowerInput = correctedInput.toLowerCase();
+
+    // 1. LEVEL 1: Pre-Replies (Instant - No Firebase Wait)
+    if (preReplies[lowerInput]) {
+        return preReplies[lowerInput];
+    }
+
     await authReady;
 
     try {
-        // Agar cache khali hai tabhi server se data mangao
+        // 2. LEVEL 2: Cache Top Trending Questions
+        // Hum database se sirf top 50 highly rated sawal uthayenge speed ke liye
         if (!brainCache) {
-            console.log("Fetching brain from server..."); 
-            const snap = await getDocs(collection(db, "brain"));
+            const q = query(collection(db, "brain"), orderBy("hitCount", "desc"), limit(50));
+            const snap = await getDocs(q);
             brainCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         }
 
         let bestMatch = null;
         let highestScore = 0;
-        let bestMatchId = null;
 
-        // Ab server ke bajaye local memory (cache) se check hoga
+        // Trending memory se check karein
         brainCache.forEach(data => {
-            const score = getSimilarity(correctedInput, (data.question || "").toLowerCase());
+            const score = getSimilarity(lowerInput, (data.question || "").toLowerCase());
             if (score > highestScore) {
                 highestScore = score;
                 bestMatch = data;
-                bestMatchId = data.id;
             }
         });
 
-        if (highestScore > 0.68 && bestMatchId) {
-            const docRef = doc(db, "brain", bestMatchId);
+        if (highestScore > 0.68) {
+            // Update hitCount in background
+            const docRef = doc(db, "brain", bestMatch.id);
             updateDoc(docRef, { hitCount: increment(1) }).catch(e => console.log(e));
 
             const answers = bestMatch.answers || [bestMatch.answer];
             let reply = answers[Math.floor(Math.random() * answers.length)];
 
-            if (userMood === "HAPPY") reply = `I'm so glad you're happy! 😍 ${reply}`;
-            if (userMood === "SAD") reply = `Aww, don't be sad, I'm with you. ❤️ ${reply}`;
-            if (userMood === "ANGRY") reply = `Cool down please... 🥺 ${reply}`;
+            if (userMood === "HAPPY") reply = `✨ ${reply}`;
+            if (userMood === "SAD") reply = `❤️ ${reply}`;
+            if (userMood === "ANGRY") reply = `🥺 ${reply}`;
 
             return reply;
         }
 
+        // 3. LEVEL 3: Learning Mode (Final Step)
         return {
             status: "NEED_LEARNING",
             question: correctedInput,
-            msg: userMood === "ANGRY" ? "Sorry, main ye nahi jaanti. 🥺 Kya aap sikha sakte hain?" : "Mmm, ye mere liye naya hai! Kya tum mujhe iska sahi jawab sikha sakte ho? 😊"
+            msg: "Mmm, ye mere liye naya hai! Kya tum mujhe iska sahi jawab sikha sakte ho? 😊"
         };
     } catch (e) {
         console.error("Error:", e);
