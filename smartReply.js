@@ -7,18 +7,14 @@ import {
     increment 
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-// --- 1. Spelling Correction Layer ---
-const spellFix = {
-    "hlo": "hello",
-    "kese": "kaise",
-    "kya h": "kya hai",
-    "u": "you",
-    "r": "are",
-    "hw": "how",
-    "thnx": "thanks",
-    "m": "main",
-    "clg": "college",
-    "ha": "haa"
+// --- 1. Spelling Correction & Mood Map ---
+const spellFix = { "hlo": "hello", "kese": "kaise", "u": "you", "r": "are", "ha": "haa" };
+
+// Mood keywords for Sentiment Analysis
+const moodMap = {
+    happy: ["khush", "happy", "mazza", "mast", "great", "badiya", "awesome", "love", "😍", "❤️"],
+    sad: ["udaas", "sad", "dukh", "roana", "unhappy", "pareshan", "alone", "🥺", "💔"],
+    angry: ["gussa", "pagal", "angry", "hate", "stupid", "bakwas", "clueless", "😡", "🤬"]
 };
 
 function autoCorrect(text) {
@@ -26,12 +22,20 @@ function autoCorrect(text) {
     return words.map(word => spellFix[word] || word).join(" ");
 }
 
+// Mood pehchanne ka function
+function detectMood(text) {
+    const t = text.toLowerCase();
+    if (moodMap.angry.some(word => t.includes(word))) return "ANGRY";
+    if (moodMap.sad.some(word => t.includes(word))) return "SAD";
+    if (moodMap.happy.some(word => t.includes(word))) return "HAPPY";
+    return "NEUTRAL";
+}
+
 // --- 2. Advanced Similarity Logic ---
 function getSimilarity(s1, s2) {
     let longer = s1.length < s2.length ? s2 : s1;
     let shorter = s1.length < s2.length ? s1 : s2;
     if (longer.length == 0) return 1.0;
-    
     const editDistance = (s1, s2) => {
         let costs = [];
         for (let i = 0; i <= s1.length; i++) {
@@ -55,7 +59,7 @@ function getSimilarity(s1, s2) {
 
 // --- 3. Main Reply Logic ---
 export async function getSmartReply(text) {
-    // Spelling mistake theek karein
+    const userMood = detectMood(text); // Mood detect karein
     const correctedInput = autoCorrect(text.trim());
     await authReady;
 
@@ -67,8 +71,7 @@ export async function getSmartReply(text) {
 
         snap.forEach(docSnap => {
             const data = docSnap.data();
-            const score = getSimilarity(correctedInput, data.question.toLowerCase());
-            
+            const score = getSimilarity(correctedInput, (data.question || "").toLowerCase());
             if (score > highestScore) {
                 highestScore = score;
                 bestMatch = data;
@@ -76,24 +79,28 @@ export async function getSmartReply(text) {
             }
         });
 
-        // Spelling mistakes ke liye threshold 0.68 rakha hai
         if (highestScore > 0.68 && bestMatchId) {
-            // Hit count update background mein
             const docRef = doc(db, "brain", bestMatchId);
             updateDoc(docRef, { hitCount: increment(1) }).catch(e => console.log(e));
 
             const answers = bestMatch.answers || [bestMatch.answer];
-            return answers[Math.floor(Math.random() * answers.length)];
+            let reply = answers[Math.floor(Math.random() * answers.length)];
+
+            // Mood ke hisaab se reply modify karein
+            if (userMood === "HAPPY") reply = `I'm so glad you're happy! 😍 ${reply}`;
+            if (userMood === "SAD") reply = `Aww, don't be sad, I'm with you. ❤️ ${reply}`;
+            if (userMood === "ANGRY") reply = `Cool down please... 🥺 ${reply}`;
+
+            return reply;
         }
 
-        // Agar bilkul match nahi mila tabhi learning trigger hogi
         return {
             status: "NEED_LEARNING",
             question: correctedInput,
-            msg: "Mmm, ye mere liye naya hai! Kya tum mujhe iska sahi jawab sikha sakte ho? 😊"
+            msg: userMood === "ANGRY" ? "Sorry, main ye nahi jaanti. 🥺 Kya aap sikha sakte hain?" : "Mmm, ye mere liye naya hai! Kya tum mujhe iska sahi jawab sikha sakte ho? 😊"
         };
     } catch (e) {
         console.error("Error:", e);
-        return "Lagta hai dimaag thoda slow chal raha hai... 🛰️";
+        return "🛰️ Connection issue lag raha hai...";
     }
 }
