@@ -12,12 +12,11 @@ const typing = document.getElementById("typing");
 let conversationHistory = [];
 let isLearning = localStorage.getItem("isLearning") === "true";
 let pendingQuestion = localStorage.getItem("pendingQuestion") || "";
-let proactiveTimer; // Idle check ke liye
+let proactiveTimer;
 
-// --- 2. PROACTIVE IDLE TRIGGER ---
+// --- 2. NATURAL IDLE TRIGGER ---
 function resetProactiveTimer() {
     clearTimeout(proactiveTimer);
-    // 45 seconds ki khamoshi ke baad bot khud bolega
     proactiveTimer = setTimeout(triggerProactiveAction, 45000); 
 }
 
@@ -25,10 +24,11 @@ async function triggerProactiveAction() {
     if (isLearning || document.hidden) return;
     
     const name = localStorage.getItem("userName") || "Dost";
+    // Girl-like proactive messages with name
     const proactiveMsgs = [
-        `Waise **${name}**, aap khamosh kyun ho gaye? Chaliye kuch aur baatein karte hain! ✨`,
-        `Main abhi pichli chat analyze kar rahi thi... Kya hum is baare mein aur baat karein? 🤔`,
-        `Elyra AI hamesha seekhne ke liye taiyar hai! Mujhe kuch naya sikhao na? 🎓`
+        `Sunno **${name}**, kahan chale gaye? 🥺 Mujhse baat nahi karni kya?`,
+        `Waise **${name}**, main soch rahi thi.. tum itne chup-chup kyun ho? 🙈`,
+        `**${name}**? Are you there? Chalo na kuch interesting batao! ✨`
     ];
 
     const randomMsg = proactiveMsgs[Math.floor(Math.random() * proactiveMsgs.length)];
@@ -36,7 +36,6 @@ async function triggerProactiveAction() {
     conversationHistory.push({ role: "bot", text: randomMsg });
 }
 
-// Location Context
 async function getUserContext() {
     try {
         const response = await fetch('https://ipapi.co/json/');
@@ -64,7 +63,7 @@ async function saveToGlobalMemory(text) {
                     memories: arrayUnion({ text, date: new Date().toISOString() })
                 });
             }
-        } catch (e) { console.error("Memory Save Error:", e); }
+        } catch (e) { console.error("Memory Error:", e); }
     }
 }
 
@@ -76,10 +75,10 @@ function addMsg(text, cls) {
     d.innerHTML = `<div class="msg-content">${text}</div><div class="time">${timeStr} ${ticks}</div>`;
     chat.appendChild(d);
     chat.scrollTop = chat.scrollHeight;
-    resetProactiveTimer(); // Message aate hi timer reset
+    resetProactiveTimer();
 }
 
-// --- 4. GREETING WITH RECALL ---
+// --- 4. GREETING WITH PERSONAL RECALL ---
 async function initiateGreeting(name, mode) {
     if (sessionStorage.getItem("greeted")) return;
     const context = await getUserContext();
@@ -94,7 +93,7 @@ async function initiateGreeting(name, mode) {
                 const userData = snap.docs[0].data();
                 if (userData.memories && userData.memories.length > 0) {
                     const lastMemory = userData.memories[userData.memories.length - 1].text;
-                    memoryRecall = ` Waise, mujhe yaad hai aapne kaha tha: "${lastMemory}" 😊`;
+                    memoryRecall = ` Waise mujhe yaad hai, tumne bataya tha: "${lastMemory}" 😊`;
                 }
             }
         } catch (e) { console.error(e); }
@@ -102,15 +101,14 @@ async function initiateGreeting(name, mode) {
 
     setTimeout(() => {
         let greet = mode === "named" 
-            ? `Welcome **${name}**! ✨ Connecting from ${context.city}.${memoryRecall}` 
+            ? `Hlo **${name}**! ✨ Connecting from ${context.city}.${memoryRecall}` 
             : `Hey **Dost**! 👤 Let's chat. How's it going in ${context.city}?`;
         addMsg(greet, "bot");
         sessionStorage.setItem("greeted", "true");
-        resetProactiveTimer();
     }, 1000);
 }
 
-// --- 5. MAIN CHAT LOGIC ---
+// --- 5. MAIN CHAT LOGIC (Natural Style) ---
 window.send = async () => {
     const text = input.value.trim();
     if (!text) return;
@@ -124,44 +122,48 @@ window.send = async () => {
 
     if (isLearning) {
         typing.classList.remove("hidden");
-        try {
-            await addDoc(collection(db, "temp_learning"), {
-                question: pendingQuestion,
-                answer: text,
-                learnedFrom: localStorage.getItem("userName"),
-                timestamp: serverTimestamp()
-            });
-            setTimeout(() => {
+        setTimeout(async () => {
+            try {
+                await addDoc(collection(db, "temp_learning"), {
+                    question: pendingQuestion,
+                    answer: text,
+                    learnedFrom: localStorage.getItem("userName"),
+                    timestamp: serverTimestamp()
+                });
                 typing.classList.add("hidden");
-                addMsg(`Theek hai, maine yaad kar liya! 🎓 Admin approval ke baad main ise seekh jaungi.`, "bot");
+                addMsg(`Theek hai **${localStorage.getItem("userName")}**, maine yaad kar liya! 🎓`, "bot");
                 isLearning = false;
                 localStorage.removeItem("isLearning");
-            }, 1000);
-        } catch (e) { console.error(e); }
+            } catch (e) { console.error(e); }
+        }, 1200);
         return;
     }
 
-    typing.classList.remove("hidden");
-    try {
-        const botReply = await getSmartReply(text, conversationHistory);
-        
-        setTimeout(() => {
-            typing.classList.add("hidden");
-            let finalMsg = (typeof botReply === "object") ? botReply.msg : botReply;
-
-            if (typeof botReply === "object" && botReply.status === "NEED_LEARNING") {
-                isLearning = true;
-                pendingQuestion = botReply.question;
-                localStorage.setItem("isLearning", "true");
-            }
+    // Natural Think-Delay
+    const thinkTime = Math.random() * (1500 - 800) + 800; 
+    setTimeout(async () => {
+        typing.classList.remove("hidden");
+        try {
+            const botReply = await getSmartReply(text, conversationHistory);
             
-            conversationHistory.push({ role: "bot", text: finalMsg });
-            addMsg(finalMsg, "bot");
-        }, 1200);
-    } catch (e) {
-        typing.classList.add("hidden");
-        addMsg("Satellite connection slow lag raha hai... 🛰️", "bot");
-    }
+            // Human Typing Speed based on length
+            let replyText = (typeof botReply === "object") ? botReply.msg : botReply;
+            const typingDuration = Math.min(Math.max(replyText.length * 35, 1200), 4500);
+
+            setTimeout(() => {
+                typing.classList.add("hidden");
+                // Natural Suffixes
+                const girlHabits = [" ✨", " 🙈", " na?", " 😊"];
+                const finalReply = replyText + (Math.random() > 0.7 ? girlHabits[Math.floor(Math.random() * girlHabits.length)] : "");
+                
+                addMsg(finalReply, "bot");
+                conversationHistory.push({ role: "bot", text: finalReply });
+            }, typingDuration);
+        } catch (e) {
+            typing.classList.add("hidden");
+            addMsg("Satellite connection slow hai yaar.. 🛰️", "bot");
+        }
+    }, thinkTime);
 };
 
 window.onload = () => {
