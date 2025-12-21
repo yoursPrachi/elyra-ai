@@ -1,68 +1,81 @@
 import { db } from "./firebase.js"; 
 import { 
     collection, addDoc, getDocs, deleteDoc, doc, updateDoc, 
-    getDoc, serverTimestamp, query, orderBy, limit, where, onSnapshot 
+    serverTimestamp, query, orderBy, limit, where, onSnapshot 
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-const container = document.getElementById("review-container");
-const MASTER_PASSWORD = "apna_secret_pass"; // Isse badal lein
+// --- 1. CONFIG & GLOBALS ---
+const MASTER_PASSWORD = "apna_secret_pass"; // Isse apna password set karein
 let userMap;
+const container = document.getElementById("review-container");
 
-// --- 1. LOGIN & INITIALIZATION ---
+// --- 2. SECURE LOGIN LOGIC (Fixed for Modules) ---
 window.checkAuth = () => {
     const passInput = document.getElementById("admin-pass").value;
+    
     if (passInput === MASTER_PASSWORD) {
         sessionStorage.setItem("isAdmin", "true");
         document.getElementById("admin-login").style.display = "none";
         document.getElementById("dashboard-content").style.display = "block";
         initDashboard();
-    } else { alert("Wrong Password!"); }
+        console.log("Admin Access Granted! ✅");
+    } else {
+        alert("Ghalat Password! ❌");
+    }
 };
 
+// Auto-Login check on Refresh
+window.addEventListener('DOMContentLoaded', () => {
+    if (sessionStorage.getItem("isAdmin") === "true") {
+        document.getElementById("admin-login").style.display = "none";
+        document.getElementById("dashboard-content").style.display = "block";
+        initDashboard();
+    }
+});
+
+// --- 3. DASHBOARD INITIALIZATION ---
 function initDashboard() {
     initMap();
-    loadAllData();
-    trackLiveStats(); // Real-time Counters
+    trackLiveStats();
+    loadUsers();
+    loadPending();
+    loadTrending();
 }
 
-if (sessionStorage.getItem("isAdmin") === "true") {
-    document.getElementById("admin-login").style.display = "none";
-    document.getElementById("dashboard-content").style.display = "block";
-    initDashboard();
-}
-
-// --- 2. GLOBAL MAP LOGIC (Leaflet) ---
+// --- 4. GLOBAL MAP (Leaflet) ---
 function initMap() {
-    userMap = L.map('map').setView([20, 0], 2); // Global View
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap contributors'
-    }).addTo(userMap);
+    if (!userMap) {
+        userMap = L.map('map').setView([20, 0], 2);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© Elyra AI Global'
+        }).addTo(userMap);
+    }
 }
 
-// --- 3. REAL-TIME STATS TRACKER ---
+// --- 5. REAL-TIME STATS & MAP MARKERS ---
 function trackLiveStats() {
     const now = new Date();
     const startOfToday = new Date(now.setHours(0,0,0,0));
-    const activeThreshold = new Date(Date.now() - 5 * 60000); // 5 Mins ago
+    const activeThreshold = new Date(Date.now() - 5 * 60000);
 
-    // A. Total Visits (Analytics collection se)
+    // Total Lifetime Visits
     onSnapshot(collection(db, "analytics"), (snap) => {
         document.getElementById("total-visits").innerText = snap.size;
     });
 
-    // B. Today's Visits
-    const todayQuery = query(collection(db, "analytics"), where("timestamp", ">=", startOfToday));
-    onSnapshot(todayQuery, (snap) => {
+    // Today's Visits
+    const todayQ = query(collection(db, "analytics"), where("timestamp", ">=", startOfToday));
+    onSnapshot(todayQ, (snap) => {
         document.getElementById("today-visits").innerText = snap.size;
     });
 
-    // C. Active Now (Last 5 mins of activity)
-    const activeQuery = query(collection(db, "analytics"), where("timestamp", ">=", activeThreshold));
-    onSnapshot(activeQuery, (snap) => {
+    // Active Now (5 min threshold)
+    const activeQ = query(collection(db, "analytics"), where("timestamp", ">=", activeThreshold));
+    onSnapshot(activeQ, (snap) => {
         document.getElementById("active-users").innerText = snap.size;
     });
 
-    // D. Map Markers from Users
+    // Markers on Map
     onSnapshot(collection(db, "users_list"), (snap) => {
         snap.forEach(docSnap => {
             const u = docSnap.data();
@@ -74,7 +87,7 @@ function trackLiveStats() {
     });
 }
 
-// --- 4. USER LOYALTY LIST ---
+// --- 6. USER MANAGEMENT & LOYALTY ---
 async function loadUsers() {
     const table = document.getElementById("user-list-table");
     const q = query(collection(db, "users_list"), orderBy("lastSeen", "desc"), limit(50));
@@ -83,36 +96,33 @@ async function loadUsers() {
         table.innerHTML = "";
         snap.forEach(docSnap => {
             const u = docSnap.data();
-            const v = u.visits || 1;
-            const lastSeen = u.lastSeen ? new Date(u.lastSeen).toLocaleTimeString() : "Now";
-            
-            let statusBadge = v > 10 ? `<span class="badge-vip">👑 VIP</span>` : 
-                             (v > 3 ? `<span class="badge-loyal">⭐ Loyal</span>` : "🆕");
+            const visits = u.visitCount || 1;
+            let badge = visits > 10 ? `<span class="badge-vip">👑 VIP</span>` : 
+                        (visits > 3 ? `<span class="badge-loyal">⭐ Loyal</span>` : "🆕");
 
             table.innerHTML += `
                 <tr>
-                    <td><b>${u.name}</b> ${statusBadge}</td>
+                    <td><b>${u.name}</b> ${badge}</td>
                     <td>${u.email}</td>
                     <td>${u.city || 'Global'}</td>
-                    <td><b>${v}</b></td>
-                    <td>${lastSeen}</td>
+                    <td>${visits}</td>
+                    <td>${u.lastSeen ? new Date(u.lastSeen).toLocaleTimeString() : 'N/A'}</td>
                 </tr>`;
         });
     });
 }
 
-// --- 5. PENDING LEARNING ---
+// --- 7. PENDING REVIEWS (Learning) ---
 async function loadPending() {
-    container.innerHTML = "Syncing Brain...";
     onSnapshot(collection(db, "temp_learning"), (snap) => {
-        container.innerHTML = snap.empty ? "Sab approved hai! ✅" : "";
+        container.innerHTML = snap.empty ? "Sab clear hai! ✅" : "";
         snap.forEach(docSnap => {
             const data = docSnap.data();
             const id = docSnap.id;
             const div = document.createElement("div");
             div.className = "pending-card";
             div.innerHTML = `
-                <b>Q:</b> ${data.question} <br>
+                <p><b>Q:</b> ${data.question}</p>
                 <input type="text" value="${data.answer}" id="inp-${id}" class="a-input">
                 <div class="btn-group">
                     <button class="btn-approve" onclick="window.approveLearned('${id}', '${data.question}')">Approve ✅</button>
@@ -123,7 +133,6 @@ async function loadPending() {
     });
 }
 
-// Global Methods for Actions
 window.approveLearned = async (id, q) => {
     const ans = document.getElementById(`inp-${id}`).value;
     await addDoc(collection(db, "brain"), { 
@@ -136,22 +145,14 @@ window.approveLearned = async (id, q) => {
 };
 
 window.deleteLearned = async (id) => {
-    if(confirm("Reject kar dein?")) {
-        await deleteDoc(doc(db, "temp_learning", id));
-    }
+    if(confirm("Reject kar dein?")) await deleteDoc(doc(db, "temp_learning", id));
 };
 
-async function loadAllData() {
-    await loadPending();
-    await loadTrending();
-    await loadUsers();
-}
-
-// Mass Upload Logic
+// --- 8. BRAIN & TRENDING ---
 window.massUpload = async () => {
-    const data = document.getElementById("bulkData").value.trim();
-    if(!data) return alert("Kuch likho toh!");
-    const lines = data.split("\n");
+    const raw = document.getElementById("bulkData").value.trim();
+    if(!raw) return alert("Kuch likho!");
+    const lines = raw.split("\n");
     for (let line of lines) {
         const [q, a] = line.split("|");
         if(q && a) {
@@ -163,22 +164,25 @@ window.massUpload = async () => {
             });
         }
     }
-    alert("Brain Synced! 🚀");
+    alert("Synced! 🚀");
     document.getElementById("bulkData").value = "";
 };
 
-window.loadTrending = async () => {
+async function loadTrending() {
     const table = document.getElementById("trending-table");
     onSnapshot(query(collection(db, "brain"), orderBy("hitCount", "desc"), limit(10)), (snap) => {
         table.innerHTML = "";
         snap.forEach(d => {
-            table.innerHTML += `<tr><td>${d.data().question}</td><td>${d.data().hitCount || 0}</td><td><button onclick="window.deleteBrainDoc('${d.id}')" style="background:red; color:white; border:none; padding:5px; border-radius:5px;">Delete</button></td></tr>`;
+            table.innerHTML += `
+                <tr>
+                    <td>${d.data().question}</td>
+                    <td>${d.data().hitCount || 0}</td>
+                    <td><button onclick="window.deleteBrainDoc('${d.id}')" style="background:red; color:white; border:none; padding:5px; border-radius:5px;">Delete</button></td>
+                </tr>`;
         });
     });
-};
+}
 
 window.deleteBrainDoc = async (id) => {
-    if(confirm("Brain se delete karein?")) {
-        await deleteDoc(doc(db, "brain", id));
-    }
+    if(confirm("Brain se delete?")) await deleteDoc(doc(db, "brain", id));
 };
