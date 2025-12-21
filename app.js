@@ -6,18 +6,26 @@ const chat = document.getElementById("chat");
 const input = document.getElementById("input");
 const typing = document.getElementById("typing");
 
-// --- Memory States ---
+// --- Memory & State Management ---
 let userName = localStorage.getItem("userName") || "";
 let isLearning = localStorage.getItem("isLearning") === "true";
 let pendingQuestion = localStorage.getItem("pendingQuestion") || "";
 let askingName = false;
 
-// Topic change starters
-const engagementStarters = [
-    "Wese, aaj ka din kaisa guzra? 😊",
-    "Tumhe music sunna pasand hai? 🎵",
-    "Mera dimaag toh digital hai, par tumhara dimaag kya soch raha hai? 😂"
-];
+// Helpers for Multi-language & Global Presence
+async function getUserContext() {
+    try {
+        const response = await fetch('https://ipapi.co/json/');
+        const data = await response.json();
+        return {
+            country: data.country_name || "the World",
+            city: data.city || "your place",
+            lang: navigator.language.split('-')[0]
+        };
+    } catch (e) {
+        return { country: "the World", lang: "en", city: "your place" };
+    }
+}
 
 function addMsg(text, cls) {
     const d = document.createElement("div");
@@ -29,20 +37,28 @@ function addMsg(text, cls) {
     chat.scrollTop = chat.scrollHeight;
 }
 
-// --- Initial Greeting ---
-window.onload = () => {
+// --- Dynamic Global Greeting ---
+window.onload = async () => {
+    const context = await getUserContext();
+    
     if (!userName) {
         setTimeout(() => {
-            addMsg("Hello! Main Elyra AI hoon. ✨ Main aapka naam jaan sakti hoon?", "bot");
-            askingName = true;
-        }, 1000);
+            addMsg(`Hello! Main Elyra AI hoon. ✨ Main aapse ${context.city}, ${context.country} mein mil kar bohot khush hoon!`, "bot");
+            setTimeout(() => {
+                addMsg("Main aapka naam jaan sakti hoon?", "bot");
+                askingName = true;
+            }, 1000);
+        }, 1500);
     } else {
         setTimeout(() => {
-            addMsg(`Welcome back, ${userName}! 😍 Kaise hain aap aaj?`, "bot");
+            let greet = `Welcome back, ${userName}! 😍 Sending love to ${context.city}!`;
+            if (context.lang === "hi") greet = `Welcome back ${userName}! Kaise hain aap? ${context.city} mein mausam kaisa hai? 🇮🇳✨`;
+            addMsg(greet, "bot");
         }, 1000);
     }
 };
 
+// --- Chat Logic ---
 window.send = async () => {
     const text = input.value.trim();
     if (!text) return;
@@ -50,7 +66,7 @@ window.send = async () => {
     input.value = "";
     addMsg(text, "user");
 
-    // 1. Agar Bot Naam Pooch raha hai
+    // 1. Handle Name Discovery
     if (askingName) {
         userName = text;
         localStorage.setItem("userName", userName);
@@ -63,7 +79,7 @@ window.send = async () => {
         return;
     }
 
-    // 2. Agar Bot Seekh raha hai
+    // 2. Handle Learning Mode
     if (isLearning) {
         typing.classList.remove("hidden");
         try {
@@ -71,7 +87,8 @@ window.send = async () => {
                 question: pendingQuestion,
                 answer: text.toLowerCase(),
                 timestamp: serverTimestamp(),
-                learnedFrom: userName
+                learnedFrom: userName,
+                location: localStorage.getItem("userCity") || "Unknown"
             });
             
             setTimeout(() => {
@@ -81,11 +98,11 @@ window.send = async () => {
                 localStorage.removeItem("isLearning");
                 localStorage.removeItem("pendingQuestion");
             }, 1000);
-        } catch (e) { console.log(e); }
+        } catch (e) { console.error("Learning Error:", e); }
         return;
     }
 
-    // 3. Normal Chat
+    // 3. Normal Smart Chat
     typing.classList.remove("hidden");
     const botReply = await getSmartReply(text);
 
@@ -98,8 +115,8 @@ window.send = async () => {
             localStorage.setItem("pendingQuestion", pendingQuestion);
             addMsg(botReply.msg, "bot");
         } else {
-            // Kabhi kabhi naam ke sath reply dena
             let finalMsg = botReply;
+            // 30% chance to include name for personal touch
             if (Math.random() > 0.7) finalMsg = `${userName}, ${botReply}`;
             addMsg(finalMsg, "bot");
         }
