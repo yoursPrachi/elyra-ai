@@ -5,7 +5,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const container = document.getElementById("review-container");
-const MASTER_PASSWORD = "apna_secret_pass"; // <--- Apna password yahan set karein
+const MASTER_PASSWORD = "apna_secret_pass"; 
 
 // --- 1. LOGIN & INITIAL LOAD ---
 window.checkAuth = () => {
@@ -22,13 +22,12 @@ window.checkAuth = () => {
     }
 };
 
-function loadAllData() {
-    loadPending();
-    loadTrending();
-    loadUsers();
+async function loadAllData() {
+    await loadPending();
+    await loadTrending();
+    await loadUsers();
 }
 
-// Auto-login check
 if (sessionStorage.getItem("isAdmin") === "true") {
     document.getElementById("admin-login").style.display = "none";
     loadAllData();
@@ -48,8 +47,8 @@ window.loadTrending = async () => {
                     <td>${data.question}</td>
                     <td><span class="badge">${data.hitCount || 0} hits</span></td>
                     <td>
-                        <button onclick="reform('${docSnap.id}')" style="background:#f39c12; padding:5px 10px;">Reform</button>
-                        <button onclick="deleteBrainDoc('${docSnap.id}')" style="background:#e74c3c; padding:5px 10px;">Clean</button>
+                        <button onclick="window.reform('${docSnap.id}')" style="background:#f39c12; padding:5px 10px;">Reform</button>
+                        <button onclick="window.deleteBrainDoc('${docSnap.id}')" style="background:#e74c3c; padding:5px 10px;">Clean</button>
                     </td>
                 </tr>`;
         });
@@ -143,7 +142,7 @@ window.checkDuplicate = async () => {
     const snap = await getDocs(collection(db, "brain"));
     let maxScore = 0; let match = "";
     snap.forEach(d => {
-        const score = getSimilarity(queryStr, d.data().question);
+        const score = getSimilarity(queryStr, (d.data().question || "").toLowerCase());
         if(score > maxScore) { maxScore = score; match = d.data().question; }
     });
     resultDiv.innerHTML = maxScore > 0.75 ? 
@@ -188,28 +187,33 @@ async function loadPending() {
             <small style="color:#777;">By: ${data.learnedFrom || 'Unknown'}</small></div>
             <input type="text" value="${data.answer}" id="inp-${id}" class="a-input">
             <div class="btn-group">
-                <button class="btn-approve" onclick="approveLearned('${id}', '${data.question}')">Approve ✅</button>
-                <button class="btn-reject" onclick="deleteLearned('${id}')">Reject ❌</button>
+                <button class="btn-approve" onclick="window.approveLearned('${id}', '${data.question}')">Approve ✅</button>
+                <button class="btn-reject" onclick="window.deleteLearned('${id}')">Reject ❌</button>
             </div>`;
         container.appendChild(div);
     });
 }
 
 window.approveLearned = async (id, q) => {
-    const ans = document.getElementById(`inp-${id}`).value;
-    await addDoc(collection(db, "brain"), { 
-        question: q.toLowerCase(), 
-        answers: [ans], 
-        hitCount: 0, 
-        timestamp: serverTimestamp() 
-    });
-    await deleteDoc(doc(db, "temp_learning", id));
-    loadPending(); loadTrending();
+    try {
+        const ans = document.getElementById(`inp-${id}`).value;
+        await addDoc(collection(db, "brain"), { 
+            question: q.toLowerCase(), 
+            answers: [ans], 
+            hitCount: 0, 
+            timestamp: serverTimestamp() 
+        });
+        await deleteDoc(doc(db, "temp_learning", id));
+        alert("Approve ho gaya! ✨");
+        loadPending();
+    } catch (e) { console.error(e); }
 };
 
 window.deleteLearned = async (id) => {
     if(confirm("Ise reject kar dein?")) {
-        await deleteDoc(doc(db, "temp_learning", id));
-        loadPending();
+        try {
+            await deleteDoc(doc(db, "temp_learning", id));
+            loadPending();
+        } catch (e) { console.error(e); }
     }
 };
