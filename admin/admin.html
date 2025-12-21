@@ -5,71 +5,112 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Elyra Admin - Pro Dashboard</title>
     <style>
-        :root { --primary: #075e54; --secondary: #25d366; --danger: #e74c3c; }
-        body { font-family: 'Segoe UI', sans-serif; background: #f0f2f5; margin: 0; padding: 15px; }
-        .header { background: var(--primary); color: white; padding: 15px; border-radius: 8px; text-align: center; margin-bottom: 20px; }
-        .card { background: white; border-radius: 10px; padding: 20px; margin-bottom: 20px; box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
-        textarea { width: 100%; height: 120px; padding: 10px; border-radius: 8px; border: 1px solid #ccc; margin-top: 10px; box-sizing: border-box; }
-        button { padding: 10px 15px; border: none; border-radius: 6px; color: white; cursor: pointer; font-weight: bold; transition: 0.3s; }
-        button:hover { opacity: 0.8; }
-        .bulk-btn { background: var(--secondary); width: 100%; font-size: 16px; margin-top: 15px; }
-        .pending-card { background: #f9f9f9; padding: 15px; border-radius: 10px; margin-bottom: 15px; border-left: 5px solid var(--primary); }
-        .a-input { width: 100%; padding: 10px; margin: 10px 0; border: 1px solid #ddd; border-radius: 5px; box-sizing: border-box; }
+        :root { --primary: #075e54; --secondary: #25d366; --danger: #e74c3c; --bg: #f0f2f5; }
+        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: #333; }
         
-        /* Table Styling */
-        .table-wrapper { overflow-x: auto; margin-top: 10px; }
-        table { width: 100%; border-collapse: collapse; min-width: 400px; }
-        th { text-align: left; background: #f1f1f1; padding: 12px; color: #555; }
-        td { padding: 12px; border-bottom: 1px solid #eee; vertical-align: middle; }
-        .badge { background: #3498db; color: white; padding: 3px 8px; border-radius: 12px; font-size: 12px; }
+        .header { background: var(--primary); color: white; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
+        
+        .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
+        h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid #eee; padding-bottom: 10px; }
+
+        /* Pending Review Cards Fix */
+        .pending-card { 
+            background: #fff; 
+            padding: 20px; 
+            border-radius: 12px; 
+            margin-bottom: 20px; 
+            border-left: 6px solid var(--primary); 
+            box-shadow: 0 2px 8px rgba(0,0,0,0.1); 
+        }
+        
+        .a-input { 
+            width: 100%; 
+            padding: 12px; 
+            margin: 15px 0; 
+            border: 1.5px solid #ddd; 
+            border-radius: 8px; 
+            box-sizing: border-box; 
+            font-size: 15px; 
+            outline: none;
+        }
+        .a-input:focus { border-color: var(--secondary); }
+
+        /* Buttons Styling */
+        .btn-group { display: flex; gap: 10px; }
+        button { 
+            padding: 12px 20px; 
+            border: none; 
+            border-radius: 8px; 
+            color: white; 
+            cursor: pointer; 
+            font-weight: bold; 
+            transition: all 0.3s ease; 
+            font-size: 14px;
+        }
+        
+        .btn-approve { background-color: var(--secondary) !important; flex: 1; }
+        .btn-reject { background-color: var(--danger) !important; flex: 1; }
+        .bulk-btn { background: var(--secondary); width: 100%; margin-top: 15px; font-size: 16px; }
+        button:hover { opacity: 0.9; transform: translateY(-1px); box-shadow: 0 4px 8px rgba(0,0,0,0.15); }
+
+        /* Table Design */
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th { text-align: left; background: #f8f9fa; padding: 12px; border-bottom: 2px solid #eee; }
+        td { padding: 12px; border-bottom: 1px solid #eee; }
+
+        /* Modal Design */
+        #reform-modal { 
+            display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: rgba(0,0,0,0.8); z-index: 99999; align-items: center; justify-content: center; 
+        }
+        .modal-content { background: white; padding: 25px; border-radius: 15px; width: 90%; max-width: 500px; }
+
+        #admin-login {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
+            background: var(--primary); z-index: 100000; display: flex; 
+            flex-direction: column; align-items: center; justify-content: center; color: white;
+        }
     </style>
 </head>
 <body>
 
-<div id="admin-login" style="position:fixed; top:0; left:0; width:100%; height:100%; background:#075e54; z-index:9999; display:flex; flex-direction:column; align-items:center; justify-content:center; color:white;">
+<div id="admin-login">
     <img src="https://i.imgur.com/8Km9tLL.png" style="width:80px; border-radius:50%; margin-bottom:20px;">
     <h3>Elyra Admin Access</h3>
-    <input type="password" id="admin-pass" placeholder="Enter Password" style="padding:12px; border-radius:8px; border:none; width:250px; text-align:center; outline: none;">
-    <button onclick="checkAuth()" style="background:#25d366; width:250px; margin-top:15px;">Login</button>
-    <p id="login-err" style="color:#ff4d4d; margin-top:10px; display:none;">Galat Password! ❌</p>
+    <input type="password" id="admin-pass" placeholder="Password" style="padding:12px; border-radius:8px; width:250px; text-align:center; border:none; margin-bottom:15px;">
+    <button onclick="checkAuth()" style="background:var(--secondary); width:250px;">Login</button>
 </div>
-    
+
 <div class="header">
-    <h2>Elyra AI - Admin Pro</h2>
+    <h2>Elyra AI - Admin Pro Dashboard</h2>
 </div>
 
 <div class="card">
-    <h3>🚀 Mass Upload (Bulk Data)</h3>
-    <p style="font-size: 12px; color: #666;">Format: Sawal | Jawab (Ek line mein ek)</p>
-    <textarea id="bulkData" placeholder="Hello | Hi, kaise ho?&#10;Kaun ho | Main Elyra AI hoon!"></textarea>
-    <button class="bulk-btn" onclick="massUpload()">Upload All to Brain</button>
+    <h3>🚀 Mass Upload</h3>
+    <textarea id="bulkData" placeholder="Sawal | Jawab"></textarea>
+    <button class="bulk-btn" onclick="massUpload()">Upload to Brain</button>
 </div>
 
 <div class="card" style="background: #e8f5e9;">
-    <h4 style="margin-top:0; color:#2e7d32;">🔍 Smart Similarity Check</h4>
+    <h4 style="margin:0 0 10px 0; color:#2e7d32;">🔍 Smart Similarity Check</h4>
     <div style="display:flex; gap:10px;">
-        <input type="text" id="check-query" placeholder="Sawal likh kar check karein..." style="flex:1; padding:10px; border-radius:5px; border:1px solid #ccc;">
+        <input type="text" id="check-query" placeholder="Sawal check karein..." style="flex:1; padding:10px; border-radius:5px; border:1px solid #ccc;">
         <button onclick="checkDuplicate()" style="background:#2e7d32;">Check</button>
     </div>
-    <div id="check-result" style="margin-top:10px; font-weight:bold; font-size: 14px;"></div>
+    <div id="check-result" style="margin-top:10px; font-weight:bold;"></div>
 </div>
-    
+
 <div class="card">
-    <h3>⏳ Pending Reviews (Community Learning)</h3>
+    <h3>⏳ Pending Reviews (Learning Mode)</h3>
     <div id="review-container">Loading...</div>
 </div>
 
 <div class="card">
-    <h3>🔥 Trending Questions & Insights</h3>
+    <h3>🔥 Trending Questions</h3>
     <div class="table-wrapper">
         <table>
-            <thead>
-                <tr>
-                    <th>Sawal</th>
-                    <th>Hits</th>
-                    <th>Action</th>
-                </tr>
-            </thead>
+            <thead><tr><th>Sawal</th><th>Hits</th><th>Action</th></tr></thead>
             <tbody id="trending-table"></tbody>
         </table>
     </div>
@@ -79,31 +120,24 @@
     <h3>👥 Registered Users</h3>
     <div class="table-wrapper">
         <table>
-            <thead>
-                <tr>
-                    <th>Name</th>
-                    <th>Email</th>
-                    <th>Date</th>
-                </tr>
-            </thead>
+            <thead><tr><th>Name</th><th>Email</th><th>Date</th></tr></thead>
             <tbody id="user-list-table"></tbody>
         </table>
     </div>
 </div>
 
-<div id="reform-modal" style="display:none; position:fixed; top:0; left:0; width:100%; height:100%; background:rgba(0,0,0,0.8); z-index:11000; align-items:center; justify-content:center;">
-    <div style="background:white; padding:25px; border-radius:15px; width:90%; max-width:500px; box-shadow: 0 10px 30px rgba(0,0,0,0.5);">
-        <h3 style="margin-top:0; color: var(--primary);">📝 Reform Answer</h3>
-        <p id="reform-question" style="font-weight:bold; color:#555; background:#f0f2f5; padding:10px; border-radius:5px;"></p>
-        <textarea id="reform-text" rows="5" placeholder="Naya jawab likhein..."></textarea>
-        <div style="margin-top:20px; text-align:right; display: flex; justify-content: flex-end; gap: 10px;">
+<div id="reform-modal">
+    <div class="modal-content">
+        <h3>📝 Reform Answer</h3>
+        <p id="reform-question" style="background:#f0f2f5; padding:10px; border-radius:8px; font-weight:bold;"></p>
+        <textarea id="reform-text" rows="5"></textarea>
+        <div class="btn-group" style="margin-top:20px;">
             <button onclick="closeReform()" style="background:#888;">Cancel</button>
-            <button onclick="saveReform()" style="background: var(--secondary);">Update ✨</button>
+            <button onclick="saveReform()" style="background:var(--secondary);">Update ✨</button>
         </div>
     </div>
 </div>
 
 <script type="module" src="admin.js"></script>
-    
 </body>
 </html>
