@@ -1,26 +1,41 @@
 import { db } from "./firebase.js";
 import { getSmartReply } from "./smartReply.js";
-import { collection, addDoc, serverTimestamp, doc, updateDoc, increment, getDocs, query, where, limit } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const chat = document.getElementById("chat");
 const input = document.getElementById("input");
 const typing = document.getElementById("typing");
 
-// --- Memory & State Management ---
+// --- 1. Global State Management ---
 let userName = localStorage.getItem("userName") || "";
 let chatMode = localStorage.getItem("chatMode") || ""; 
 let isLearning = localStorage.getItem("isLearning") === "true";
 let pendingQuestion = localStorage.getItem("pendingQuestion") || "";
+// Trainer status check karne ke liye role property
+let userRole = localStorage.getItem("userRole") || "user"; 
 
-// Location Helper
+// International Context Helper
 async function getUserContext() {
     try {
         const response = await fetch('https://ipapi.co/json/');
         const data = await response.json();
-        return { country: data.country_name || "the World", city: data.city || "your place" };
+        return { 
+            country: data.country_name || "Global", 
+            city: data.city || "Earth",
+            lang: navigator.language.split('-')[0] // Browser language detect karein
+        };
     } catch (e) {
-        return { country: "the World", city: "your place" };
+        return { country: "Global", city: "Earth", lang: "en" };
     }
+}
+
+// Time-based smart greeting logic
+function getTimeBasedGreeting() {
+    const hrs = new Date().getHours();
+    if (hrs < 12) return "Good Morning ☀️";
+    if (hrs < 17) return "Good Afternoon 🌤️";
+    if (hrs < 21) return "Good Evening ☕";
+    return "Good Night 🌙";
 }
 
 function addMsg(text, cls) {
@@ -33,12 +48,7 @@ function addMsg(text, cls) {
     chat.scrollTop = chat.scrollHeight;
 }
 
-// --- POPUP FUNCTIONS ---
-window.showNameForm = () => {
-    document.getElementById("initial-options").style.display = "none";
-    document.getElementById("name-form").style.display = "block";
-};
-
+// --- 2. POPUP & REGISTRATION ---
 window.startNamedChat = async () => {
     const name = document.getElementById("u-name").value.trim();
     const email = document.getElementById("u-email").value.trim();
@@ -46,79 +56,53 @@ window.startNamedChat = async () => {
         localStorage.setItem("userName", name);
         localStorage.setItem("chatMode", "named");
         localStorage.setItem("isNewUser", "true"); 
-        localStorage.setItem("visitCount", "1"); // Initialize visits
+        localStorage.setItem("visitCount", "1");
         document.getElementById("welcome-popup").style.display = "none";
         
         try {
+            // Registration data with visits
             await addDoc(collection(db, "users_list"), { 
-                name, 
-                email, 
-                visits: 1, 
-                timestamp: serverTimestamp() 
+                name, email, visits: 1, role: "user", timestamp: serverTimestamp() 
             });
         } catch (e) { console.error(e); }
         
         initiateGreeting(name, "named");
-    } else { alert("Naam aur Email zaroori hain! 😊"); }
+    } else { alert("Please enter details! 😊"); }
 };
 
-window.startGuestChat = () => {
-    localStorage.setItem("userName", "Dost");
-    localStorage.setItem("chatMode", "guest");
-    localStorage.setItem("isNewUser", "true");
-    localStorage.setItem("visitCount", "1");
-    document.getElementById("welcome-popup").style.display = "none";
-    initiateGreeting("Dost", "guest");
-};
-
-// --- SMART LOYALTY GREETING LOGIC ---
+// --- 3. ADVANCE GLOBAL GREETING ---
 async function initiateGreeting(name, mode) {
     if (sessionStorage.getItem("greeted")) return;
 
-    // Update Local Visit Count
     let visits = parseInt(localStorage.getItem("visitCount") || "0");
     if (localStorage.getItem("isNewUser") !== "true") {
         visits++;
         localStorage.setItem("visitCount", visits.toString());
     }
 
+    const context = await getUserContext();
+    const timeGreet = getTimeBasedGreeting();
+
     setTimeout(async () => {
         let greet = "";
-        const isNew = localStorage.getItem("isNewUser") === "true";
+        const isNew = localStorage.getItem("isNewUser") === "true");
 
         if (isNew) {
-            const context = await getUserContext();
-            greet = mode === "named" 
-                ? `Swaagat hai **${name}**! ✨ Aap ${context.city} se jud rahe hain, jaan kar khushi hui. Bataiye main aapki kya madad kar sakti hoon?` 
-                : `Hey **Dost**! 👤 Kaise ho? Chalo aaj dher saari baatein karte hain!`;
+            // Full International Greeting
+            greet = `${timeGreet} **${name}**! ✨ Joining from ${context.city}, ${context.country}. I'm Elyra, your Global AI assistant. How can I help you today?`;
             localStorage.removeItem("isNewUser");
         } else {
-            // Loyalty Based Greetings
-            if (visits <= 3) {
-                greet = `Welcome back, **${name}**! 😍 Khushi hui aapko dubara dekh kar.`;
-            } else if (visits > 3 && visits <= 10) {
-                greet = `Namaste **${name}** ji! 🙏 Aap toh hamare purane dost ban gaye hain. Bataiye aaj kya naya hai?`;
-            } else {
-                greet = `Oho! Hamare **VIP Dost ${name}** tashreef laye hain! 👑 Aapka aana hamare liye khas hai.`;
-            }
+            // Loyalty greetings
+            if (visits > 10) greet = `👑 VIP Welcome back, **${name}**! ${timeGreet}! It's always great to see our top supporters.`;
+            else greet = `Welcome back, **${name}**! 😍 Hope you're having a wonderful ${timeGreet.split(' ')[1]} in ${context.city}.`;
         }
         
         addMsg(greet, "bot");
         sessionStorage.setItem("greeted", "true");
-    }, 1000);
+    }, 1200);
 }
 
-// Check on Load
-window.onload = () => {
-    if (localStorage.getItem("userName")) {
-        document.getElementById("welcome-popup").style.display = "none";
-        const name = localStorage.getItem("userName");
-        const mode = localStorage.getItem("chatMode");
-        initiateGreeting(name, mode);
-    }
-};
-
-// --- Main Chat Logic ---
+// --- 4. ADVANCE SEND LOGIC (Trainer & Delay Support) ---
 window.send = async () => {
     const text = input.value.trim();
     if (!text) return;
@@ -126,18 +110,20 @@ window.send = async () => {
     input.value = "";
     addMsg(text, "user");
 
+    // Learning mode logic
     if (isLearning) {
         typing.classList.remove("hidden");
         try {
             await addDoc(collection(db, "temp_learning"), {
                 question: pendingQuestion,
-                answer: text.toLowerCase(),
-                timestamp: serverTimestamp(),
-                learnedFrom: localStorage.getItem("userName")
+                answer: text,
+                learnedFrom: localStorage.getItem("userName"),
+                userRole: userRole, // Admin identifies if a 'trainer' taught this
+                timestamp: serverTimestamp()
             });
             setTimeout(() => {
                 typing.classList.add("hidden");
-                addMsg(`Theek hai, maine yaad kar liya! 😍 Sikhane ke liye shukriya.`, "bot");
+                addMsg(`Theek hai, maine yaad kar liya! 🎓 Lesson sent to Admin for approval. Sikhane ke liye shukriya.`, "bot");
                 isLearning = false;
                 localStorage.removeItem("isLearning");
             }, 1000);
@@ -148,6 +134,10 @@ window.send = async () => {
     typing.classList.remove("hidden");
     const botReply = await getSmartReply(text);
 
+    // International Standard: Dynamic Typing Speed
+    // Lambe messages ke liye zyada delay, chote ke liye kam
+    const dynamicDelay = Math.min(Math.max(botReply.length * 30, 1000), 3500);
+
     setTimeout(() => {
         typing.classList.add("hidden");
         if (typeof botReply === "object" && botReply.status === "NEED_LEARNING") {
@@ -157,19 +147,22 @@ window.send = async () => {
             addMsg(botReply.msg, "bot");
         } else {
             let finalMsg = botReply;
-            const mode = localStorage.getItem("chatMode");
-            const name = localStorage.getItem("userName");
             const visits = parseInt(localStorage.getItem("visitCount") || "1");
             
-            // VIPs get more respect
+            // Respectful VIP logic
             if (visits > 10) {
-                finalMsg = `Ji ${name} Sahab, ${botReply}`;
-            } else if (Math.random() > 0.8) {
-                finalMsg = mode === "named" ? `${name} ji, ${botReply}` : `${name}, ${botReply}`;
+                finalMsg = `Ji ${userName} Sahab, ${botReply}`;
             }
             addMsg(finalMsg, "bot");
         }
-    }, 1200);
+    }, dynamicDelay);
+};
+
+window.onload = () => {
+    if (localStorage.getItem("userName")) {
+        document.getElementById("welcome-popup").style.display = "none";
+        initiateGreeting(localStorage.getItem("userName"), localStorage.getItem("chatMode"));
+    }
 };
 
 input.addEventListener("keypress", (e) => { if (e.key === "Enter") window.send(); });
