@@ -12,19 +12,17 @@
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
         .stat-card { background: white; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-bottom: 4px solid var(--primary); }
         .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        #map { height: 400px; border-radius: 12px; border: 1px solid #ddd; width: 100%; }
+        #map { height: 400px; border-radius: 12px; border: 1px solid #ddd; width: 100%; background: #eee; }
         .table-wrapper { overflow-x: auto; }
         table { width: 100%; border-collapse: collapse; }
-        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; font-size: 14px; }
-        th { background: #f8f9fa; color: var(--primary); }
-        .badge-vip { background: #f1c40f; color: #000; padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: bold; }
+        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
     </style>
 </head>
 <body>
 
 <div id="dashboard-content">
     <div class="header">
-        <h2>Elyra AI - Global Admin Pro 🌍</h2>
+        <h2>Elyra AI - Global Admin Dashboard 🌍</h2>
     </div>
 
     <div class="stats-grid">
@@ -39,21 +37,11 @@
     </div>
 
     <div class="card">
-        <h3>Registered Users & Loyalty</h3>
+        <h3>Registered Users</h3>
         <div class="table-wrapper">
             <table>
-                <thead>
-                    <tr>
-                        <th>Name</th>
-                        <th>Email</th>
-                        <th>Location</th>
-                        <th>Visits</th>
-                        <th>Last Activity</th>
-                    </tr>
-                </thead>
-                <tbody id="user-list-table">
-                    <tr><td colspan="5" style="text-align:center;">Syncing with Firebase...</td></tr>
-                </tbody>
+                <thead><tr><th>Name</th><th>Email</th><th>Visits</th><th>Last Activity</th></tr></thead>
+                <tbody id="user-list-table"></tbody>
             </table>
         </div>
     </div>
@@ -63,4 +51,3 @@
 <script type="module" src="admin.js"></script>
 </body>
 </html>
-
