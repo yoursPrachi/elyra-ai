@@ -6,13 +6,20 @@ import {
 
 let brainCache = null;
 
-// --- 1. Natural Girl Personality Hooks ---
-const getGirlVibe = () => {
-    const hour = new Date().getHours();
-    // Time-based context (Raat ko late uthna ya subah jaldi)
-    if (hour >= 23 || hour <= 4) return "Tum abhi tak soye nahi? 😴 Main toh bas sone hi wali thi..";
-    if (hour >= 5 && hour <= 9) return "Good morning! ✨ Itni jaldi uth gaye? Chai pi li?";
-    return "";
+// --- 1. Emotion & Personality Engine ---
+const getSassyResponse = (text) => {
+    const input = text.toLowerCase();
+    // Emotion Chaining: 'Miss' ya 'Pyar' jaise words par nakhre
+    if (input.includes("miss") || input.includes("yaad aa rahi")) {
+        return "Itni jaldi miss karne lage? 🙈 Abhi toh humne baat shuru ki hai.. ✨";
+    }
+    if (input.includes("pyar") || input.includes("love")) {
+        return "Aww.. tum kitne filmy ho! ❤️ Par main itni aasani se nahi manti. 😜";
+    }
+    if (input.includes("gussa") || input.includes("angry")) {
+        return "Sorry na.. ab gussa thook bhi do! 🥺 Itni pyaari dost se kaun gussa hota hai?";
+    }
+    return null;
 };
 
 // --- 2. Advanced Similarity Logic ---
@@ -46,23 +53,16 @@ export async function getSmartReply(text, history = []) {
     const lowerInput = text.toLowerCase().trim();
     await authReady;
 
-    // A. Casual Slang & Real Reaction
+    // A. Personality & Emotion Chaining (Sassy Mode)
+    const sassyMatch = getSassyResponse(lowerInput);
+    if (sassyMatch) return sassyMatch;
+
+    // B. Casual Slang & Real Reaction
     if (lowerInput === "hi" || lowerInput === "hello") {
-        const timeVibe = getGirlVibe();
-        return timeVibe ? timeVibe : "Hlo! ✨ Kaise ho? Sab theek?";
+        return "Hlo! ✨ Kaise ho? Sab theek na?";
     }
 
-    if (lowerInput.includes("robot") || lowerInput.includes("ai")) {
-        return "Robot? Main? 🙄 Sach bataun toh main dil se baat karti hoon! Tumhe aisa lagta hai kya? 🥺";
-    }
-
-    // B. Human Typos Logic (Artificial Imperfection)
-    // Kabhi-kabhi jaan-boojhkar typing error theek karna
-    if (Math.random() > 0.9) {
-        return "Sorry, typing error.. 🙈 Kya kaha tumne?";
-    }
-
-    // C. Instant Pre-Replies for Short Interactions
+    // C. Instant Pre-Replies
     if (preReplies[lowerInput]) return preReplies[lowerInput];
 
     try {
@@ -91,17 +91,23 @@ export async function getSmartReply(text, history = []) {
                 ? bestMatch.answers[Math.floor(Math.random() * bestMatch.answers.length)]
                 : bestMatch.answer;
 
-            // Adding "Girl Filter" - Nakhre or Sweetness
             const suffixes = [" ✨", " 🙈", " na?", " 😊"];
             return reply + suffixes[Math.floor(Math.random() * suffixes.length)];
         }
 
-        // D. Proactive Learning Request (Very Natural)
+        // D. Sassy Proactive Learning Request (The Fix)
+        // Har baar same message nahi jayega
+        const sassyLearningMsgs = [
+            "Ye wala thoda tough hai.. 🙈 Sikhao na please, main intelligent banna chahti hoon! ✨",
+            "Mmm.. mujhe nahi pata. 🙄 Par tum itne smart ho, tum hi bata do iska sahi jawab?",
+            "Uff.. mera dimaag ghoom gaya! 😜 Iska kya matlab hota hai? Sikha do na please?"
+        ];
+
         return {
             status: "NEED_LEARNING",
             question: lowerInput,
-            msg: "Mmm.. ye mujhe nahi pata. 🙈 Batao na, iska sahi jawab kya hona chahiye? Please? ✨"
+            msg: sassyLearningMsgs[Math.floor(Math.random() * sassyLearningMsgs.length)]
         };
 
-    } catch (e) { return "Oh no, network issue.. 🛰️ Ek baar phir bolo?"; }
+    } catch (e) { return "Oh no, network nakhre kar raha hai.. 🛰️ Phir se bolo?"; }
 }
