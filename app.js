@@ -1,25 +1,51 @@
 import { db } from "./firebase.js"; 
 import { getSmartReply } from "./smartReply.js";
-import { collection, addDoc, serverTimestamp } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
+import { 
+    collection, addDoc, serverTimestamp, doc, getDoc, updateDoc, arrayUnion, query, where, getDocs 
+} from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const chat = document.getElementById("chat");
 const input = document.getElementById("input");
 const typing = document.getElementById("typing");
 
-// --- 1. Memory Management ---
-let userName = localStorage.getItem("userName") || "";
-let chatMode = localStorage.getItem("chatMode") || ""; 
+// --- 1. State Management ---
+let conversationHistory = [];
 let isLearning = localStorage.getItem("isLearning") === "true";
 let pendingQuestion = localStorage.getItem("pendingQuestion") || "";
 
-// Location Helper
+// Location Context
 async function getUserContext() {
     try {
         const response = await fetch('https://ipapi.co/json/');
         const data = await response.json();
         return { country: data.country_name || "Global", city: data.city || "Earth" };
-    } catch (e) {
-        return { country: "Global", city: "Earth" };
+    } catch (e) { return { country: "Global", city: "Earth" }; }
+}
+
+// --- 2. LONG-TERM MEMORY LOGIC ---
+async function saveToGlobalMemory(text) {
+    const name = localStorage.getItem("userName");
+    const email = localStorage.getItem("userEmail"); // Registration ke waqt save kiya gaya
+    if (!name || name === "Dost" || !email) return;
+
+    // Memory Keywords Detection
+    const triggers = ["rehta hoon", "rehti hoon", "pasand hai", "love", "favorite", "born in"];
+    const isImportant = triggers.some(t => text.toLowerCase().includes(t));
+
+    if (isImportant) {
+        try {
+            // User ke document ko email se find karein
+            const q = query(collection(db, "users_list"), where("email", "==", email));
+            const snap = await getDocs(q);
+            
+            if (!snap.empty) {
+                const userDoc = snap.docs[0].ref;
+                await updateDoc(userDoc, {
+                    memories: arrayUnion({ text, date: new Date().toISOString() })
+                });
+                console.log("Memory Secured 🧠");
+            }
+        } catch (e) { console.error("Memory Save Error:", e); }
     }
 }
 
@@ -33,58 +59,49 @@ function addMsg(text, cls) {
     chat.scrollTop = chat.scrollHeight;
 }
 
-// --- 2. LOGIN & POPUP ---
-window.showNameForm = () => {
-    document.getElementById("initial-options").style.display = "none";
-    document.getElementById("name-form").style.display = "block";
-};
-
-window.startNamedChat = async () => {
-    const name = document.getElementById("u-name")?.value.trim();
-    const email = document.getElementById("u-email")?.value.trim();
-
-    if (name && email) {
-        localStorage.setItem("userName", name);
-        localStorage.setItem("chatMode", "named");
-        localStorage.setItem("isNewUser", "true");
-        document.getElementById("welcome-popup").style.display = "none";
-
-        try {
-            await addDoc(collection(db, "users_list"), { name, email, visits: 1, timestamp: serverTimestamp() });
-        } catch (e) { console.error(e); }
-        initiateGreeting(name, "named");
-    } else { alert("Please enter details! 😊"); }
-};
-
-window.startGuestChat = () => {
-    localStorage.setItem("userName", "Dost");
-    localStorage.setItem("chatMode", "guest");
-    localStorage.setItem("isNewUser", "true");
-    document.getElementById("welcome-popup").style.display = "none";
-    initiateGreeting("Dost", "guest");
-};
-
+// --- 3. GREETING WITH RECALL ---
 async function initiateGreeting(name, mode) {
     if (sessionStorage.getItem("greeted")) return;
     const context = await getUserContext();
+    const email = localStorage.getItem("userEmail");
+
+    let memoryRecall = "";
+    if (email) {
+        try {
+            const q = query(collection(db, "users_list"), where("email", "==", email));
+            const snap = await getDocs(q);
+            if (!snap.empty) {
+                const userData = snap.docs[0].data();
+                if (userData.memories && userData.memories.length > 0) {
+                    const lastMemory = userData.memories[userData.memories.length - 1].text;
+                    memoryRecall = ` Waise, mujhe yaad hai aapne kaha tha: "${lastMemory}" 😊`;
+                }
+            }
+        } catch (e) { console.error(e); }
+    }
+
     setTimeout(() => {
         let greet = mode === "named" 
-            ? `Welcome **${name}**! ✨ Connecting from ${context.city}. How can I help you?`
+            ? `Welcome **${name}**! ✨ Connecting from ${context.city}.${memoryRecall}` 
             : `Hey **Dost**! 👤 Let's chat. How's it going in ${context.city}?`;
         addMsg(greet, "bot");
         sessionStorage.setItem("greeted", "true");
     }, 1000);
 }
 
-// --- 3. MAIN CHAT LOGIC (Error Fix Included) ---
+// --- 4. MAIN CHAT & CONTEXT LOGIC ---
 window.send = async () => {
     const text = input.value.trim();
     if (!text) return;
 
     input.value = "";
     addMsg(text, "user");
+    
+    // Update Memory & History
+    saveToGlobalMemory(text); 
+    conversationHistory.push({ role: "user", text });
+    if (conversationHistory.length > 6) conversationHistory.shift();
 
-    // Handling Learning Submission
     if (isLearning) {
         typing.classList.remove("hidden");
         try {
@@ -96,7 +113,7 @@ window.send = async () => {
             });
             setTimeout(() => {
                 typing.classList.add("hidden");
-                addMsg(`Theek hai, maine yaad kar liya! 🎓 Admin ke approval ke baad main ise seekh jaungi.`, "bot");
+                addMsg(`Theek hai, maine yaad kar liya! 🎓 Admin approval ke baad main ise seekh jaungi.`, "bot");
                 isLearning = false;
                 localStorage.removeItem("isLearning");
             }, 1000);
@@ -106,20 +123,21 @@ window.send = async () => {
 
     typing.classList.remove("hidden");
     try {
-        const botReply = await getSmartReply(text);
+        // History pass karein contextual reply ke liye
+        const botReply = await getSmartReply(text, conversationHistory); 
         
         setTimeout(() => {
             typing.classList.add("hidden");
+            let finalMsg = (typeof botReply === "object") ? botReply.msg : botReply;
 
-            // FIX: Agar botReply object hai (Learning Needed), toh uska .msg extract karein
             if (typeof botReply === "object" && botReply.status === "NEED_LEARNING") {
                 isLearning = true;
                 pendingQuestion = botReply.question;
                 localStorage.setItem("isLearning", "true");
-                addMsg(botReply.msg, "bot"); // Sirf text dikhayega, object nahi
-            } else {
-                addMsg(botReply, "bot"); // Seedha text string dikhayega
             }
+            
+            conversationHistory.push({ role: "bot", text: finalMsg });
+            addMsg(finalMsg, "bot");
         }, 1200);
     } catch (e) {
         typing.classList.add("hidden");
