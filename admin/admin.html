@@ -37,7 +37,13 @@
     <textarea id="bulkData" placeholder="Hello | Hi, kaise ho?&#10;Kaun ho | Main Elyra AI hoon!"></textarea>
     <button class="bulk-btn" onclick="massUpload()">Upload All to Brain</button>
 </div>
-
+<div style="margin: 20px 0; padding: 15px; background: #e8f5e9; border-radius: 10px;">
+    <h4 style="margin-top:0; color:#2e7d32;">🔍 Smart Similarity Check</h4>
+    <input type="text" id="check-query" placeholder="Sawal likh kar check karein..." style="width:70%; padding:10px; border-radius:5px; border:1px solid #ccc;">
+    <button onclick="checkDuplicate()" style="padding:10px 20px; background:#2e7d32; color:white; border:none; border-radius:5px; cursor:pointer;">Check Database</button>
+    <div id="check-result" style="margin-top:10px; font-weight:bold;"></div>
+</div>
+    
 <div class="card">
     <h3>⏳ Pending Reviews</h3>
     <div id="review-container">Loading...</div>
