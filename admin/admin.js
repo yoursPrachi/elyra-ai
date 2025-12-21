@@ -5,7 +5,7 @@ import {
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 const container = document.getElementById("review-container");
-const MASTER_PASSWORD = "apna_secret_pass"; // <--- Apna password yahan check karein
+const MASTER_PASSWORD = "apna_secret_pass"; // <--- Apna password yahan set karein
 
 // --- 1. LOGIN & INITIAL LOAD ---
 window.checkAuth = () => {
@@ -16,22 +16,25 @@ window.checkAuth = () => {
         loginDiv.style.display = "none";
         loadAllData();
     } else {
-        alert("Ghalat Password! ❌");
+        const err = document.getElementById("login-err");
+        err.style.display = "block";
+        setTimeout(() => err.style.display = "none", 2000);
     }
 };
 
 function loadAllData() {
     loadPending();
     loadTrending();
-    loadUsers(); // User list function
+    loadUsers();
 }
 
+// Auto-login check
 if (sessionStorage.getItem("isAdmin") === "true") {
     document.getElementById("admin-login").style.display = "none";
     loadAllData();
 }
 
-// --- 2. TRENDING & REFORM LOGIC (Popularity) ---
+// --- 2. TRENDING & REFORM LOGIC ---
 window.loadTrending = async () => {
     const table = document.getElementById("trending-table");
     try {
@@ -41,19 +44,18 @@ window.loadTrending = async () => {
         snap.forEach(docSnap => {
             const data = docSnap.data();
             table.innerHTML += `
-                <tr style="border-bottom:1px solid #eee;">
-                    <td style="padding:10px;">${data.question}</td>
-                    <td style="padding:10px;"><span style="background:#3498db; color:white; padding:2px 8px; border-radius:10px;">${data.hitCount || 0} hits</span></td>
-                    <td style="padding:10px;">
-                        <button onclick="reform('${docSnap.id}')" style="background:#f39c12; color:white; border:none; border-radius:4px; padding:5px; cursor:pointer;">Reform</button>
-                        <button onclick="deleteBrainDoc('${docSnap.id}')" style="background:#e74c3c; color:white; border:none; border-radius:4px; padding:5px; cursor:pointer;">Clean</button>
+                <tr>
+                    <td>${data.question}</td>
+                    <td><span class="badge">${data.hitCount || 0} hits</span></td>
+                    <td>
+                        <button onclick="reform('${docSnap.id}')" style="background:#f39c12; padding:5px 10px;">Reform</button>
+                        <button onclick="deleteBrainDoc('${docSnap.id}')" style="background:#e74c3c; padding:5px 10px;">Clean</button>
                     </td>
                 </tr>`;
         });
-    } catch (e) { console.error(e); }
+    } catch (e) { console.error("Trending Load Error:", e); }
 };
 
-// --- REFORM (EDIT) LOGIC ---
 let currentReformId = "";
 window.reform = async (docId) => {
     currentReformId = docId;
@@ -69,21 +71,24 @@ window.reform = async (docId) => {
 
 window.saveReform = async () => {
     const newText = document.getElementById("reform-text").value.trim();
-    if (!newText) return;
+    if (!newText) return alert("Jawab likhna zaroori hai!");
     try {
         const docRef = doc(db, "brain", currentReformId);
         const ansArray = newText.split('\n').filter(a => a.trim() !== "");
-        await updateDoc(docRef, { answers: ansArray, lastReformed: serverTimestamp() });
-        alert("Updated! ✨");
+        await updateDoc(docRef, { 
+            answers: ansArray, 
+            lastReformed: serverTimestamp() 
+        });
+        alert("Success! ✨ Answer reform ho gaya.");
         window.closeReform();
         loadTrending();
-    } catch (e) { alert("Error updating!"); }
+    } catch (e) { alert("Error updating database!"); }
 };
 
 window.closeReform = () => { document.getElementById("reform-modal").style.display = "none"; };
 
 window.deleteBrainDoc = async (id) => {
-    if(confirm("Kya aap ise brain se delete karna chahte hain?")) {
+    if(confirm("Kya aap ise brain se permanently delete karna chahte hain?")) {
         await deleteDoc(doc(db, "brain", id));
         loadTrending();
     }
@@ -99,9 +104,9 @@ async function loadUsers() {
         snap.forEach(docSnap => {
             const u = docSnap.data();
             const date = u.timestamp ? new Date(u.timestamp.seconds * 1000).toLocaleDateString() : "N/A";
-            table.innerHTML += `<tr><td style="padding:10px;">${u.name}</td><td>${u.email}</td><td>${date}</td></tr>`;
+            table.innerHTML += `<tr><td>${u.name}</td><td>${u.email}</td><td>${date}</td></tr>`;
         });
-    } catch (e) { console.log(e); }
+    } catch (e) { console.error("User List Error:", e); }
 }
 
 // --- 4. SIMILARITY & DUPLICATE CHECK ---
@@ -109,7 +114,6 @@ function getSimilarity(s1, s2) {
     let longer = s1.length < s2.length ? s2 : s1;
     let shorter = s1.length < s2.length ? s1 : s2;
     if (longer.length == 0) return 1.0;
-    
     const editDistance = (s1, s2) => {
         let costs = [];
         for (let i = 0; i <= s1.length; i++) {
@@ -135,20 +139,22 @@ window.checkDuplicate = async () => {
     const queryStr = document.getElementById("check-query").value.toLowerCase().trim();
     const resultDiv = document.getElementById("check-result");
     if(!queryStr) return;
-    resultDiv.innerHTML = "Checking... ⏳";
+    resultDiv.innerHTML = "Checking database... ⏳";
     const snap = await getDocs(collection(db, "brain"));
     let maxScore = 0; let match = "";
     snap.forEach(d => {
         const score = getSimilarity(queryStr, d.data().question);
         if(score > maxScore) { maxScore = score; match = d.data().question; }
     });
-    resultDiv.innerHTML = maxScore > 0.7 ? `⚠️ Match Found: "${match}" (${Math.round(maxScore*100)}%)` : "✅ Unique Question!";
+    resultDiv.innerHTML = maxScore > 0.75 ? 
+        `<span style="color:red;">⚠️ Match Found: "${match}" (${Math.round(maxScore*100)}%)</span>` : 
+        `<span style="color:green;">✅ Unique Question!</span>`;
 };
 
 // --- 5. MASS UPLOAD & PENDING LOGIC ---
 window.massUpload = async () => {
     const data = document.getElementById("bulkData").value.trim();
-    if (!data) return;
+    if (!data) return alert("Pehle data toh daalo!");
     const lines = data.split("\n");
     try {
         for (let line of lines) {
@@ -162,9 +168,10 @@ window.massUpload = async () => {
                 });
             }
         }
-        alert("Mass Upload Done! 🚀");
+        alert("Bulk Upload Successful! 🚀");
+        document.getElementById("bulkData").value = "";
         loadTrending();
-    } catch (e) { console.error(e); }
+    } catch (e) { alert("Upload fail: " + e.message); }
 };
 
 async function loadPending() {
@@ -177,22 +184,32 @@ async function loadPending() {
         const div = document.createElement("div");
         div.className = "pending-card";
         div.innerHTML = `
-            <div><b>Q:</b> ${data.question} <br><small>By: ${data.learnedFrom || 'Unknown'}</small></div>
+            <div style="font-size: 16px;"><b>Q:</b> ${data.question} <br>
+            <small style="color:#777;">By: ${data.learnedFrom || 'Unknown'}</small></div>
             <input type="text" value="${data.answer}" id="inp-${id}" class="a-input">
-            <button onclick="approveLearned('${id}', '${data.question}')">Approve</button>
-            <button onclick="deleteLearned('${id}')">Reject</button>`;
+            <div class="btn-group">
+                <button class="btn-approve" onclick="approveLearned('${id}', '${data.question}')">Approve ✅</button>
+                <button class="btn-reject" onclick="deleteLearned('${id}')">Reject ❌</button>
+            </div>`;
         container.appendChild(div);
     });
 }
 
 window.approveLearned = async (id, q) => {
     const ans = document.getElementById(`inp-${id}`).value;
-    await addDoc(collection(db, "brain"), { question: q.toLowerCase(), answers: [ans], hitCount: 0, timestamp: serverTimestamp() });
+    await addDoc(collection(db, "brain"), { 
+        question: q.toLowerCase(), 
+        answers: [ans], 
+        hitCount: 0, 
+        timestamp: serverTimestamp() 
+    });
     await deleteDoc(doc(db, "temp_learning", id));
     loadPending(); loadTrending();
 };
 
 window.deleteLearned = async (id) => {
-    await deleteDoc(doc(db, "temp_learning", id));
-    loadPending();
+    if(confirm("Ise reject kar dein?")) {
+        await deleteDoc(doc(db, "temp_learning", id));
+        loadPending();
+    }
 };
