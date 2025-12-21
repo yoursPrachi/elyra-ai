@@ -171,3 +171,14 @@ header {
 }
 
 .hidden { display: none; }
+#welcome-popup {
+    transition: all 0.5s ease-in-out;
+}
+#name-form input {
+    outline: none;
+    transition: 0.3s;
+}
+#name-form input:focus {
+    border-color: #25d366;
+    box-shadow: 0 0 5px rgba(37, 211, 102, 0.3);
+}
