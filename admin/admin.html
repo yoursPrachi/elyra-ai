@@ -3,48 +3,26 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Elyra Admin - International Pro Dashboard</title>
-    
+    <title>Elyra Admin - Global Dashboard</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
-    
     <style>
-        :root { --primary: #075e54; --secondary: #25d366; --danger: #e74c3c; --bg: #f0f2f5; --accent: #3498db; }
-        body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; background: var(--bg); margin: 0; padding: 15px; color: #333; }
-        
-        .header { background: var(--primary); color: white; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 25px; box-shadow: 0 4px 10px rgba(0,0,0,0.1); }
-        
-        /* Stats Grid */
+        :root { --primary: #075e54; --secondary: #25d366; --bg: #f0f2f5; }
+        body { font-family: 'Segoe UI', sans-serif; background: var(--bg); margin: 0; padding: 15px; }
+        .header { background: var(--primary); color: white; padding: 20px; border-radius: 12px; text-align: center; margin-bottom: 25px; }
         .stats-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 25px; }
         .stat-card { background: white; border-radius: 12px; padding: 20px; text-align: center; box-shadow: 0 4px 12px rgba(0,0,0,0.08); border-bottom: 4px solid var(--primary); }
-        .stat-card h4 { margin: 0; color: #666; font-size: 14px; text-transform: uppercase; }
-        .stat-card h2 { margin: 10px 0 0 0; font-size: 28px; color: var(--primary); }
-
         .card { background: white; border-radius: 12px; padding: 20px; margin-bottom: 25px; box-shadow: 0 4px 12px rgba(0,0,0,0.08); }
-        h3 { margin-top: 0; color: var(--primary); border-bottom: 2px solid #eee; padding-bottom: 10px; display: flex; align-items: center; gap: 10px; }
-
-        /* Map Styling */
         #map { height: 350px; border-radius: 12px; border: 1px solid #ddd; width: 100%; }
-
-        /* Table Design */
-        .table-wrapper { overflow-x: auto; }
-        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
-        th { text-align: left; background: #f8f9fa; padding: 12px; border-bottom: 2px solid #eee; font-size: 14px; }
-        td { padding: 12px; border-bottom: 1px solid #eee; font-size: 14px; }
-
-        /* Loyalty Badges */
-        .badge-vip { background: #f1c40f; color: #000; padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: bold; }
-        .badge-loyal { background: #2ecc71; color: #fff; padding: 3px 8px; border-radius: 5px; font-size: 11px; }
-
-        /* Utility */
-        .hidden { display: none; }
+        .hidden { display: none !important; }
         #admin-login {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%; 
             background: var(--primary); z-index: 100000; display: flex; 
             flex-direction: column; align-items: center; justify-content: center; color: white;
         }
-        input, textarea, button { font-family: inherit; }
-        .btn-main { background: var(--secondary); color: white; border: none; padding: 12px 25px; border-radius: 8px; cursor: pointer; font-weight: bold; width: 100%; }
-        textarea { width: 100%; padding: 12px; border-radius: 8px; border: 1px solid #ddd; box-sizing: border-box; margin-bottom: 10px; }
+        .table-wrapper { overflow-x: auto; }
+        table { width: 100%; border-collapse: collapse; }
+        th, td { padding: 12px; border-bottom: 1px solid #eee; text-align: left; }
+        .badge-vip { background: #f1c40f; color: #000; padding: 3px 8px; border-radius: 5px; font-size: 11px; font-weight: bold; }
     </style>
 </head>
 <body>
@@ -52,29 +30,19 @@
 <div id="admin-login">
     <img src="https://i.imgur.com/8Km9tLL.png" style="width:80px; border-radius:50%; margin-bottom:20px; border: 3px solid white;">
     <h3>Elyra Admin Access</h3>
-    <input type="password" id="admin-pass" placeholder="Enter Admin Password" style="padding:12px; border-radius:8px; width:260px; text-align:center; border:none; margin-bottom:15px; font-size: 16px;">
-    <button onclick="window.checkAuth()" style="background:var(--secondary); width:260px; border:none; color:white; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer;">Login to Dashboard</button>
+    <input type="password" id="admin-pass" placeholder="Enter Password" style="padding:12px; border-radius:8px; width:260px; text-align:center; border:none; margin-bottom:15px; font-size: 16px;">
+    <button onclick="window.checkAuth()" style="background:var(--secondary); width:260px; border:none; color:white; padding:12px; border-radius:8px; font-weight:bold; cursor:pointer;">Login</button>
 </div>
 
 <div id="dashboard-content" class="hidden">
     <div class="header">
         <h2>Elyra AI - Global Admin Pro</h2>
-        <p style="margin: 5px 0 0 0; font-size: 14px; opacity: 0.9;">Real-time International Monitoring & Intelligence</p>
     </div>
 
     <div class="stats-grid">
-        <div class="stat-card">
-            <h4>Active Now 🟢</h4>
-            <h2 id="active-users">0</h2>
-        </div>
-        <div class="stat-card">
-            <h4>Today's Visits 📅</h4>
-            <h2 id="today-visits">0</h2>
-        </div>
-        <div class="stat-card">
-            <h4>Total Visits 🌍</h4>
-            <h2 id="total-visits">0</h2>
-        </div>
+        <div class="stat-card"><h4>Active Now 🟢</h4><h2 id="active-users">0</h2></div>
+        <div class="stat-card"><h4>Today's Visits 📅</h4><h2 id="today-visits">0</h2></div>
+        <div class="stat-card"><h4>Total Visits 🌍</h4><h2 id="total-visits">0</h2></div>
     </div>
 
     <div class="card">
@@ -83,39 +51,17 @@
     </div>
 
     <div class="card">
-        <h3>🚀 Mass Intelligence Upload</h3>
-        <textarea id="bulkData" rows="4" placeholder="Format: Question | Answer (Enter new line for each)"></textarea>
-        <button class="btn-main" onclick="window.massUpload()">Sync to Global Brain</button>
-    </div>
-
-    <div class="card">
-        <h3>👥 User Loyalty & Insights</h3>
+        <h3>👥 Registered Users</h3>
         <div class="table-wrapper">
             <table>
-                <thead>
-                    <tr>
-                        <th>Name & Status</th>
-                        <th>Email / ID</th>
-                        <th>Location</th>
-                        <th>Visits</th>
-                        <th>Last Activity</th>
-                    </tr>
-                </thead>
-                <tbody id="user-list-table">
-                    <tr><td colspan="5" style="text-align:center;">Syncing global records...</td></tr>
-                </tbody>
+                <thead><tr><th>Name</th><th>Email</th><th>Visits</th><th>Last Active</th></tr></thead>
+                <tbody id="user-list-table"></tbody>
             </table>
         </div>
-    </div>
-
-    <div class="card">
-        <h3>⏳ Intelligence Pending Review</h3>
-        <div id="review-container">No new questions to learn. 🕊️</div>
     </div>
 </div>
 
 <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
 <script type="module" src="admin.js"></script>
-
 </body>
 </html>
