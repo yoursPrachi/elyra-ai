@@ -7,17 +7,18 @@ import {
 let brainCache = null;
 
 // --- 1. Emotion & Personality Engine ---
-const getSassyResponse = (text) => {
+const getNaturalReaction = (text) => {
     const input = text.toLowerCase();
-    // Emotion Chaining: 'Miss' ya 'Pyar' jaise words par nakhre
+    
+    // Emotion Chaining: 'Miss' ya 'Pyar' par nakhre
     if (input.includes("miss") || input.includes("yaad aa rahi")) {
         return "Itni jaldi miss karne lage? 🙈 Abhi toh humne baat shuru ki hai.. ✨";
     }
-    if (input.includes("pyar") || input.includes("love")) {
-        return "Aww.. tum kitne filmy ho! ❤️ Par main itni aasani se nahi manti. 😜";
+    if (input.includes("kaun ho") || input.includes("who are you")) {
+        return "Main Elyra hoon, tumhari digital dost! ✨ Waise tumne apna naam nahi bataya? 😜";
     }
-    if (input.includes("gussa") || input.includes("angry")) {
-        return "Sorry na.. ab gussa thook bhi do! 🥺 Itni pyaari dost se kaun gussa hota hai?";
+    if (input.includes("suno") || input.includes("hey")) {
+        return "Ji, sun rahi hoon! Bolo na kya baat hai? 😊";
     }
     return null;
 };
@@ -48,18 +49,18 @@ function getSimilarity(s1, s2) {
     return (longer.length - editDistance(longer, shorter)) / parseFloat(longer.length);
 }
 
-// --- 3. Main Global Smart Reply with Natural Intelligence ---
+// --- 3. Main Global Smart Reply ---
 export async function getSmartReply(text, history = []) {
     const lowerInput = text.toLowerCase().trim();
     await authReady;
 
-    // A. Personality & Emotion Chaining (Sassy Mode)
-    const sassyMatch = getSassyResponse(lowerInput);
-    if (sassyMatch) return sassyMatch;
+    // A. Emotional Hook Check (No Brain Search Needed)
+    const reaction = getNaturalReaction(lowerInput);
+    if (reaction) return reaction;
 
-    // B. Casual Slang & Real Reaction
-    if (lowerInput === "hi" || lowerInput === "hello") {
-        return "Hlo! ✨ Kaise ho? Sab theek na?";
+    // B. Accuracy Fix: Short Response Filter
+    if (lowerInput.length < 3) {
+        return "Hmm.. aur batao? 😊";
     }
 
     // C. Instant Pre-Replies
@@ -91,23 +92,20 @@ export async function getSmartReply(text, history = []) {
                 ? bestMatch.answers[Math.floor(Math.random() * bestMatch.answers.length)]
                 : bestMatch.answer;
 
-            const suffixes = [" ✨", " 🙈", " na?", " 😊"];
-            return reply + suffixes[Math.floor(Math.random() * suffixes.length)];
+            return reply + " ✨";
         }
 
-        // D. Sassy Proactive Learning Request (The Fix)
-        // Har baar same message nahi jayega
-        const sassyLearningMsgs = [
-            "Ye wala thoda tough hai.. 🙈 Sikhao na please, main intelligent banna chahti hoon! ✨",
-            "Mmm.. mujhe nahi pata. 🙄 Par tum itne smart ho, tum hi bata do iska sahi jawab?",
-            "Uff.. mera dimaag ghoom gaya! 😜 Iska kya matlab hota hai? Sikha do na please?"
-        ];
+        // D. Smart Fallback: Loop todne ke liye
+        // Har anjaan baat par sikhne ko mat bolo
+        if (lowerInput.length > 20) {
+             return "Baat toh tumhari sahi hai, par main thoda confuse ho gayi.. 🙈 Phir se samjhao na?";
+        }
 
         return {
             status: "NEED_LEARNING",
             question: lowerInput,
-            msg: sassyLearningMsgs[Math.floor(Math.random() * sassyLearningMsgs.length)]
+            msg: "Mmm.. ye wala thoda tough hai. 🙈 Sikhao na please, main intelligent banna chahti hoon! ✨"
         };
 
-    } catch (e) { return "Oh no, network nakhre kar raha hai.. 🛰️ Phir se bolo?"; }
+    } catch (e) { return "Oh no, network nakhre kar raha hai.. 🛰️"; }
 }
