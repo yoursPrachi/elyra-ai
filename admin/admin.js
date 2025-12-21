@@ -3,55 +3,31 @@ import {
     collection, query, where, onSnapshot, orderBy, limit 
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-const MASTER_PASSWORD = "1234"; // 👈 Apna password yahan set karein
 let userMap;
 
-// --- LOGIN LOGIC (Global Scope Fix) ---
-window.checkAuth = () => {
-    const passInput = document.getElementById("admin-pass").value;
-    const loginScreen = document.getElementById("admin-login");
-    const dashboard = document.getElementById("dashboard-content");
-
-    if (passInput === MASTER_PASSWORD) {
-        sessionStorage.setItem("isAdmin", "true");
-        // Forcefully switch views
-        loginScreen.style.setProperty("display", "none", "important");
-        dashboard.classList.remove("hidden");
-        dashboard.style.display = "block";
-        initDashboard();
-    } else {
-        alert("Incorrect Password! ❌");
-    }
-};
-
-// Check login status on page refresh
+// Dashboard initialization
 window.addEventListener('load', () => {
-    if (sessionStorage.getItem("isAdmin") === "true") {
-        document.getElementById("admin-login").style.display = "none";
-        document.getElementById("dashboard-content").classList.remove("hidden");
-        document.getElementById("dashboard-content").style.display = "block";
-        initDashboard();
-    }
-});
-
-function initDashboard() {
     initMap();
     trackLiveStats();
     loadUsers();
-}
+    console.log("Dashboard Loaded Successfully ✅");
+});
 
-// --- MAP & STATS ---
+// 1. Initialize Global Map
 function initMap() {
     if (!userMap) {
         userMap = L.map('map').setView([20, 0], 2);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(userMap);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '© Elyra AI'
+        }).addTo(userMap);
     }
 }
 
+// 2. Real-time Analytics & Counters
 function trackLiveStats() {
     const startOfToday = new Date();
     startOfToday.setHours(0,0,0,0);
-    const activeThreshold = new Date(Date.now() - 5 * 60000);
+    const activeThreshold = new Date(Date.now() - 5 * 60000); // Last 5 mins
 
     // Lifetime Visits
     onSnapshot(collection(db, "analytics"), (snap) => {
@@ -70,31 +46,41 @@ function trackLiveStats() {
         document.getElementById("active-users").innerText = snap.size;
     });
 
-    // Markers on Map
+    // Update Map Markers
     onSnapshot(collection(db, "users_list"), (snap) => {
         snap.forEach(docSnap => {
             const u = docSnap.data();
             if (u.lat && u.lng) {
-                L.marker([u.lat, u.lng]).addTo(userMap).bindPopup(u.name);
+                L.marker([u.lat, u.lng]).addTo(userMap)
+                    .bindPopup(`<b>${u.name}</b><br>${u.city || 'Global User'}`);
             }
         });
     });
 }
 
+// 3. User Table with Loyalty Badges
 function loadUsers() {
     const table = document.getElementById("user-list-table");
-    const q = query(collection(db, "users_list"), orderBy("lastSeen", "desc"), limit(20));
+    const q = query(collection(db, "users_list"), orderBy("lastSeen", "desc"), limit(30));
+    
     onSnapshot(q, (snap) => {
         table.innerHTML = "";
+        if(snap.empty) {
+            table.innerHTML = "<tr><td colspan='5' style='text-align:center;'>No users found.</td></tr>";
+            return;
+        }
         snap.forEach(d => {
             const u = d.data();
             const visits = u.visitCount || 1;
             const badge = visits > 10 ? '<span class="badge-vip">👑 VIP</span>' : '';
+            const lastTime = u.lastSeen ? new Date(u.lastSeen).toLocaleTimeString() : 'N/A';
+            
             table.innerHTML += `<tr>
                 <td>${u.name} ${badge}</td>
                 <td>${u.email}</td>
+                <td>${u.city || 'Global'}</td>
                 <td>${visits}</td>
-                <td>${u.lastSeen ? new Date(u.lastSeen).toLocaleTimeString() : 'N/A'}</td>
+                <td>${lastTime}</td>
             </tr>`;
         });
     });
