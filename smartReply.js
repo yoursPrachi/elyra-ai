@@ -1,38 +1,27 @@
 import { db, authReady } from "./firebase.js";
-import { preReplies } from "./preReplies.js"; // Aapka local pre-replies file
+import { preReplies } from "./preReplies.js";
 import { 
-    collection, 
-    getDocs, 
-    doc, 
-    updateDoc, 
-    increment,
-    query,
-    orderBy,
-    limit 
+    collection, getDocs, doc, updateDoc, increment, query, orderBy, limit 
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-// --- Memory Cache ---
-let brainCache = null; 
+let brainCache = null;
 
-const spellFix = { "hlo": "hello", "kese": "kaise", "u": "you", "r": "are", "ha": "haa" };
+// --- 1. Translation Layer (Internal Logic) ---
+async function translateText(text, targetLang) {
+    try {
+        // Yahan aap Google Translate ya LibreTranslate ki API call kar sakte hain.
+        // Filhal ye ek placeholder hai jo international structure ko handle karega.
+        // Global launch ke liye yahan API key integrate karni hogi.
+        console.log(`Translating to ${targetLang}...`);
+        return text; 
+    } catch (e) { return text; }
+}
 
-const moodMap = {
-    happy: ["khush", "happy", "mazza", "mast", "great", "badiya", "awesome", "love", "😍", "❤️"],
-    sad: ["udaas", "sad", "dukh", "roana", "unhappy", "pareshan", "alone", "🥺", "💔"],
-    angry: ["gussa", "pagal", "angry", "hate", "stupid", "bakwas", "clueless", "😡", "🤬"]
-};
-
+// --- 2. Spelling & Mood Logic ---
+const spellFix = { "hlo": "hello", "kese": "kaise", "u": "you" };
 function autoCorrect(text) {
     let words = text.toLowerCase().split(/\s+/);
     return words.map(word => spellFix[word] || word).join(" ");
-}
-
-function detectMood(text) {
-    const t = text.toLowerCase();
-    if (moodMap.angry.some(word => t.includes(word))) return "ANGRY";
-    if (moodMap.sad.some(word => t.includes(word))) return "SAD";
-    if (moodMap.happy.some(word => t.includes(word))) return "HAPPY";
-    return "NEUTRAL";
 }
 
 function getSimilarity(s1, s2) {
@@ -60,24 +49,22 @@ function getSimilarity(s1, s2) {
     return (longer.length - editDistance(longer, shorter)) / parseFloat(longer.length);
 }
 
-// --- Main Optimized Logic ---
+// --- 3. Main Smart Reply with Translation ---
 export async function getSmartReply(text) {
-    const userMood = detectMood(text); 
-    const correctedInput = autoCorrect(text.trim());
-    const lowerInput = correctedInput.toLowerCase();
+    const userLang = navigator.language.split('-')[0]; // Detect User Language
+    let processedInput = autoCorrect(text.trim());
 
-    // 1. LEVEL 1: Pre-Replies (Instant - No Firebase Wait)
-    if (preReplies[lowerInput]) {
-        return preReplies[lowerInput];
+    // Step A: Check Pre-Replies (Fastest)
+    if (preReplies[processedInput.toLowerCase()]) {
+        return preReplies[processedInput.toLowerCase()];
     }
 
     await authReady;
 
     try {
-        // 2. LEVEL 2: Cache Top Trending Questions
-        // Hum database se sirf top 50 highly rated sawal uthayenge speed ke liye
+        // Step B: Load & Cache Brain
         if (!brainCache) {
-            const q = query(collection(db, "brain"), orderBy("hitCount", "desc"), limit(50));
+            const q = query(collection(db, "brain"), orderBy("hitCount", "desc"), limit(100));
             const snap = await getDocs(q);
             brainCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
         }
@@ -85,38 +72,39 @@ export async function getSmartReply(text) {
         let bestMatch = null;
         let highestScore = 0;
 
-        // Trending memory se check karein
+        // Step C: Similarity Search
         brainCache.forEach(data => {
-            const score = getSimilarity(lowerInput, (data.question || "").toLowerCase());
+            const score = getSimilarity(processedInput.toLowerCase(), (data.question || "").toLowerCase());
             if (score > highestScore) {
                 highestScore = score;
                 bestMatch = data;
             }
         });
 
-        if (highestScore > 0.68) {
-            // Update hitCount in background
+        if (highestScore > 0.70) {
+            // Update stats in background
             const docRef = doc(db, "brain", bestMatch.id);
             updateDoc(docRef, { hitCount: increment(1) }).catch(e => console.log(e));
 
             const answers = bestMatch.answers || [bestMatch.answer];
             let reply = answers[Math.floor(Math.random() * answers.length)];
 
-            if (userMood === "HAPPY") reply = `✨ ${reply}`;
-            if (userMood === "SAD") reply = `❤️ ${reply}`;
-            if (userMood === "ANGRY") reply = `🥺 ${reply}`;
+            // Step D: Auto-Translate Reply back to User's Language
+            if (userLang !== 'en' && userLang !== 'hi') {
+                reply = await translateText(reply, userLang);
+            }
 
             return reply;
         }
 
-        // 3. LEVEL 3: Learning Mode (Final Step)
+        // Step E: Learning Mode
         return {
             status: "NEED_LEARNING",
-            question: correctedInput,
-            msg: "Mmm, ye mere liye naya hai! Kya tum mujhe iska sahi jawab sikha sakte ho? 😊"
+            question: processedInput,
+            msg: "I'm still learning global languages! Can you teach me the correct answer for this? 😊"
         };
     } catch (e) {
-        console.error("Error:", e);
-        return "🛰️ Connection issue lag raha hai...";
+        console.error("Global Brain Error:", e);
+        return "Connecting to global servers... 🛰️";
     }
 }
