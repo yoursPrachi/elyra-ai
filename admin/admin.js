@@ -6,69 +6,66 @@ import {
 let userMap;
 
 // Dashboard initialization
-window.addEventListener('load', () => {
+window.addEventListener('DOMContentLoaded', () => {
     initMap();
     trackLiveStats();
     loadUsers();
-    console.log("Dashboard Loaded Successfully ✅");
+    console.log("Admin Dashboard Active ✅");
 });
 
-// 1. Initialize Global Map
+// 1. Map Initialization
 function initMap() {
     if (!userMap) {
         userMap = L.map('map').setView([20, 0], 2);
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-            attribution: '© Elyra AI'
-        }).addTo(userMap);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(userMap);
     }
 }
 
-// 2. Real-time Analytics & Counters
+// 2. Real-time Counters & Map Markers
 function trackLiveStats() {
     const startOfToday = new Date();
     startOfToday.setHours(0,0,0,0);
-    const activeThreshold = new Date(Date.now() - 5 * 60000); // Last 5 mins
+    const activeThreshold = new Date(Date.now() - 5 * 60000); 
 
     // Lifetime Visits
     onSnapshot(collection(db, "analytics"), (snap) => {
-        document.getElementById("total-visits").innerText = snap.size;
+        const el = document.getElementById("total-visits");
+        if(el) el.innerText = snap.size;
     });
 
     // Today's Visits
     const todayQ = query(collection(db, "analytics"), where("timestamp", ">=", startOfToday));
     onSnapshot(todayQ, (snap) => {
-        document.getElementById("today-visits").innerText = snap.size;
+        const el = document.getElementById("today-visits");
+        if(el) el.innerText = snap.size;
     });
 
-    // Active Now (Real-time)
+    // Active Now
     const activeQ = query(collection(db, "analytics"), where("timestamp", ">=", activeThreshold));
     onSnapshot(activeQ, (snap) => {
-        document.getElementById("active-users").innerText = snap.size;
+        const el = document.getElementById("active-users");
+        if(el) el.innerText = snap.size;
     });
 
-    // Update Map Markers
+    // Update markers on Map
     onSnapshot(collection(db, "users_list"), (snap) => {
         snap.forEach(docSnap => {
             const u = docSnap.data();
             if (u.lat && u.lng) {
-                L.marker([u.lat, u.lng]).addTo(userMap)
-                    .bindPopup(`<b>${u.name}</b><br>${u.city || 'Global User'}`);
+                L.marker([u.lat, u.lng]).addTo(userMap).bindPopup(u.name);
             }
         });
     });
 }
 
-// 3. User Table with Loyalty Badges
+// 3. User Table Data
 function loadUsers() {
     const table = document.getElementById("user-list-table");
-    const q = query(collection(db, "users_list"), orderBy("lastSeen", "desc"), limit(30));
+    const q = query(collection(db, "users_list"), orderBy("lastSeen", "desc"), limit(20));
     
     onSnapshot(q, (snap) => {
+        if(!table) return;
         table.innerHTML = "";
-        if(snap.empty) {
-            table.innerHTML = "<tr><td colspan='5' style='text-align:center;'>No users found.</td></tr>";
-            return;
-        }
         snap.forEach(d => {
             const u = d.data();
             const visits = u.visitCount || 1;
