@@ -6,15 +6,13 @@ const chat = document.getElementById("chat");
 const input = document.getElementById("input");
 const typing = document.getElementById("typing");
 
-// --- 1. Global State Management ---
+// --- 1. Global Memory & International State ---
 let userName = localStorage.getItem("userName") || "";
 let chatMode = localStorage.getItem("chatMode") || ""; 
 let isLearning = localStorage.getItem("isLearning") === "true";
 let pendingQuestion = localStorage.getItem("pendingQuestion") || "";
-// Trainer status check karne ke liye role property
-let userRole = localStorage.getItem("userRole") || "user"; 
 
-// International Context Helper
+// Smart International Context
 async function getUserContext() {
     try {
         const response = await fetch('https://ipapi.co/json/');
@@ -22,79 +20,65 @@ async function getUserContext() {
         return { 
             country: data.country_name || "Global", 
             city: data.city || "Earth",
-            lang: navigator.language.split('-')[0] // Browser language detect karein
+            currency: data.currency || "USD",
+            timezone: data.timezone || "UTC",
+            lang: navigator.language || "en-US" // Browser language detect karein
         };
     } catch (e) {
-        return { country: "Global", city: "Earth", lang: "en" };
+        return { country: "Global", city: "Earth", lang: "en-US", timezone: "UTC" };
     }
 }
 
-// Time-based smart greeting logic
-function getTimeBasedGreeting() {
-    const hrs = new Date().getHours();
-    if (hrs < 12) return "Good Morning ☀️";
-    if (hrs < 17) return "Good Afternoon 🌤️";
-    if (hrs < 21) return "Good Evening ☕";
+// Global Time-Aware Greeting
+function getGlobalGreeting(timezone) {
+    const options = { timeZone: timezone, hour: 'numeric', hour12: false };
+    const localHour = new Intl.DateTimeFormat('en-US', options).format(new Date());
+    
+    if (localHour >= 5 && localHour < 12) return "Good Morning ☀️";
+    if (localHour >= 12 && localHour < 17) return "Good Afternoon 🌤️";
+    if (localHour >= 17 && localHour < 21) return "Good Evening ☕";
     return "Good Night 🌙";
 }
 
 function addMsg(text, cls) {
     const d = document.createElement("div");
     d.className = `msg ${cls}`;
-    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+    
+    // International Date/Time Formatting
+    const timeStr = new Intl.DateTimeFormat(navigator.language, {
+        hour: '2-digit', 
+        minute: '2-digit'
+    }).format(new Date());
+
     const ticks = cls === 'user' ? '<span class="ticks">✓✓</span>' : '';
     d.innerHTML = `<div class="msg-content">${text}</div><div class="time">${timeStr} ${ticks}</div>`;
     chat.appendChild(d);
     chat.scrollTop = chat.scrollHeight;
 }
 
-// --- 2. POPUP & REGISTRATION ---
-window.startNamedChat = async () => {
-    const name = document.getElementById("u-name").value.trim();
-    const email = document.getElementById("u-email").value.trim();
-    if (name && email) {
-        localStorage.setItem("userName", name);
-        localStorage.setItem("chatMode", "named");
-        localStorage.setItem("isNewUser", "true"); 
-        localStorage.setItem("visitCount", "1");
-        document.getElementById("welcome-popup").style.display = "none";
-        
-        try {
-            // Registration data with visits
-            await addDoc(collection(db, "users_list"), { 
-                name, email, visits: 1, role: "user", timestamp: serverTimestamp() 
-            });
-        } catch (e) { console.error(e); }
-        
-        initiateGreeting(name, "named");
-    } else { alert("Please enter details! 😊"); }
-};
-
-// --- 3. ADVANCE GLOBAL GREETING ---
+// --- 2. INTERNATIONAL GREETING LOGIC ---
 async function initiateGreeting(name, mode) {
     if (sessionStorage.getItem("greeted")) return;
 
-    let visits = parseInt(localStorage.getItem("visitCount") || "0");
-    if (localStorage.getItem("isNewUser") !== "true") {
-        visits++;
-        localStorage.setItem("visitCount", visits.toString());
-    }
-
     const context = await getUserContext();
-    const timeGreet = getTimeBasedGreeting();
+    const timeGreet = getGlobalGreeting(context.timezone);
 
     setTimeout(async () => {
         let greet = "";
-        const isNew = localStorage.getItem("isNewUser") === "true");
+        const visits = parseInt(localStorage.getItem("visitCount") || "1");
+        const isNew = localStorage.getItem("isNewUser") === "true";
 
         if (isNew) {
-            // Full International Greeting
-            greet = `${timeGreet} **${name}**! ✨ Joining from ${context.city}, ${context.country}. I'm Elyra, your Global AI assistant. How can I help you today?`;
+            // New Global User Greeting
+            greet = `${timeGreet} **${name}**! ✨ It's wonderful to connect with someone from ${context.city}, ${context.country}. I'm Elyra, your Global AI. How can I assist you today?`;
             localStorage.removeItem("isNewUser");
         } else {
-            // Loyalty greetings
-            if (visits > 10) greet = `👑 VIP Welcome back, **${name}**! ${timeGreet}! It's always great to see our top supporters.`;
-            else greet = `Welcome back, **${name}**! 😍 Hope you're having a wonderful ${timeGreet.split(' ')[1]} in ${context.city}.`;
+            // Returning International User
+            if (visits > 10) {
+                greet = `👑 **VIP Recognition**: Welcome back, **${name}**! Hope your day in ${context.city} is going great. ${timeGreet}!`;
+            } else {
+                greet = `Hello again, **${name}**! 😍 Wishing you a pleasant ${timeGreet.split(' ')[1]}!`;
+            }
         }
         
         addMsg(greet, "bot");
@@ -102,7 +86,7 @@ async function initiateGreeting(name, mode) {
     }, 1200);
 }
 
-// --- 4. ADVANCE SEND LOGIC (Trainer & Delay Support) ---
+// --- 3. MAIN CHAT LOGIC (Global Optimization) ---
 window.send = async () => {
     const text = input.value.trim();
     if (!text) return;
@@ -110,7 +94,6 @@ window.send = async () => {
     input.value = "";
     addMsg(text, "user");
 
-    // Learning mode logic
     if (isLearning) {
         typing.classList.remove("hidden");
         try {
@@ -118,12 +101,12 @@ window.send = async () => {
                 question: pendingQuestion,
                 answer: text,
                 learnedFrom: localStorage.getItem("userName"),
-                userRole: userRole, // Admin identifies if a 'trainer' taught this
+                region: (await getUserContext()).country, // Region track karein
                 timestamp: serverTimestamp()
             });
             setTimeout(() => {
                 typing.classList.add("hidden");
-                addMsg(`Theek hai, maine yaad kar liya! 🎓 Lesson sent to Admin for approval. Sikhane ke liye shukriya.`, "bot");
+                addMsg(`I've noted that down! 🌍 Thank you for helping me grow globally.`, "bot");
                 isLearning = false;
                 localStorage.removeItem("isLearning");
             }, 1000);
@@ -134,9 +117,8 @@ window.send = async () => {
     typing.classList.remove("hidden");
     const botReply = await getSmartReply(text);
 
-    // International Standard: Dynamic Typing Speed
-    // Lambe messages ke liye zyada delay, chote ke liye kam
-    const dynamicDelay = Math.min(Math.max(botReply.length * 30, 1000), 3500);
+    // International Standard: Human-like dynamic typing speed
+    const dynamicDelay = Math.min(Math.max(botReply.length * 30, 1200), 4000);
 
     setTimeout(() => {
         typing.classList.add("hidden");
@@ -146,18 +128,12 @@ window.send = async () => {
             localStorage.setItem("isLearning", "true");
             addMsg(botReply.msg, "bot");
         } else {
-            let finalMsg = botReply;
-            const visits = parseInt(localStorage.getItem("visitCount") || "1");
-            
-            // Respectful VIP logic
-            if (visits > 10) {
-                finalMsg = `Ji ${userName} Sahab, ${botReply}`;
-            }
-            addMsg(finalMsg, "bot");
+            addMsg(botReply, "bot");
         }
     }, dynamicDelay);
 };
 
+// ... login functions ...
 window.onload = () => {
     if (localStorage.getItem("userName")) {
         document.getElementById("welcome-popup").style.display = "none";
