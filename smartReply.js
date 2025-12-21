@@ -7,10 +7,11 @@ import {
     increment 
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-// --- 1. Spelling Correction & Mood Map ---
+// --- 1. Memory Cache (Server delay hatane ke liye) ---
+let brainCache = null;
+
 const spellFix = { "hlo": "hello", "kese": "kaise", "u": "you", "r": "are", "ha": "haa" };
 
-// Mood keywords for Sentiment Analysis
 const moodMap = {
     happy: ["khush", "happy", "mazza", "mast", "great", "badiya", "awesome", "love", "😍", "❤️"],
     sad: ["udaas", "sad", "dukh", "roana", "unhappy", "pareshan", "alone", "🥺", "💔"],
@@ -22,7 +23,6 @@ function autoCorrect(text) {
     return words.map(word => spellFix[word] || word).join(" ");
 }
 
-// Mood pehchanne ka function
 function detectMood(text) {
     const t = text.toLowerCase();
     if (moodMap.angry.some(word => t.includes(word))) return "ANGRY";
@@ -31,7 +31,6 @@ function detectMood(text) {
     return "NEUTRAL";
 }
 
-// --- 2. Advanced Similarity Logic ---
 function getSimilarity(s1, s2) {
     let longer = s1.length < s2.length ? s2 : s1;
     let shorter = s1.length < s2.length ? s1 : s2;
@@ -57,25 +56,31 @@ function getSimilarity(s1, s2) {
     return (longer.length - editDistance(longer, shorter)) / parseFloat(longer.length);
 }
 
-// --- 3. Main Reply Logic ---
+// --- 3. Optimized Reply Logic ---
 export async function getSmartReply(text) {
-    const userMood = detectMood(text); // Mood detect karein
+    const userMood = detectMood(text); 
     const correctedInput = autoCorrect(text.trim());
     await authReady;
 
     try {
-        const snap = await getDocs(collection(db, "brain"));
+        // Agar cache khali hai tabhi server se data mangao
+        if (!brainCache) {
+            console.log("Fetching brain from server..."); 
+            const snap = await getDocs(collection(db, "brain"));
+            brainCache = snap.docs.map(d => ({ id: d.id, ...d.data() }));
+        }
+
         let bestMatch = null;
         let highestScore = 0;
         let bestMatchId = null;
 
-        snap.forEach(docSnap => {
-            const data = docSnap.data();
+        // Ab server ke bajaye local memory (cache) se check hoga
+        brainCache.forEach(data => {
             const score = getSimilarity(correctedInput, (data.question || "").toLowerCase());
             if (score > highestScore) {
                 highestScore = score;
                 bestMatch = data;
-                bestMatchId = docSnap.id;
+                bestMatchId = data.id;
             }
         });
 
@@ -86,7 +91,6 @@ export async function getSmartReply(text) {
             const answers = bestMatch.answers || [bestMatch.answer];
             let reply = answers[Math.floor(Math.random() * answers.length)];
 
-            // Mood ke hisaab se reply modify karein
             if (userMood === "HAPPY") reply = `I'm so glad you're happy! 😍 ${reply}`;
             if (userMood === "SAD") reply = `Aww, don't be sad, I'm with you. ❤️ ${reply}`;
             if (userMood === "ANGRY") reply = `Cool down please... 🥺 ${reply}`;
