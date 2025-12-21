@@ -1,16 +1,28 @@
 import { db, authReady } from "./firebase.js";
-import { preReplies } from "./preReplies.js"; // Is file mein niche diye gaye answers rakhein
+import { preReplies } from "./preReplies.js";
 import { 
-    collection, getDocs, doc, updateDoc, increment, query, orderBy, limit 
+    collection, getDocs, doc, updateDoc, increment, query, orderBy, limit, where 
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
 let brainCache = null;
 
-// --- 1. Auto-Translation Logic ---
-async function translateText(text, targetLang) {
-    // International users ke liye placeholder
-    console.log(`Translating to: ${targetLang}`);
-    return text; 
+// --- 1. Long-Term Memory Recall Logic ---
+async function getPersonalContext(text) {
+    const email = localStorage.getItem("userEmail");
+    if (!email) return null;
+
+    try {
+        const q = query(collection(db, "users_list"), where("email", "==", email));
+        const snap = await getDocs(q);
+        if (!snap.empty) {
+            const userData = snap.docs[0].data();
+            // Agar user ne apni memory se juda kuch pucha
+            if (text.includes("mera") || text.includes("my")) {
+                return userData.memories || [];
+            }
+        }
+    } catch (e) { console.error(e); }
+    return null;
 }
 
 // --- 2. Advanced Similarity Logic ---
@@ -39,20 +51,35 @@ function getSimilarity(s1, s2) {
     return (longer.length - editDistance(longer, shorter)) / parseFloat(longer.length);
 }
 
-// --- 3. Main Global Smart Reply ---
-export async function getSmartReply(text) {
-    const userLang = navigator.language.split('-')[0]; // Detect Language
+// --- 3. Main Global Smart Reply with Context ---
+export async function getSmartReply(text, history = []) {
     const lowerInput = text.toLowerCase().trim();
+    await authReady;
 
-    // STEP 1: Instant Pre-Replies (No Server Delay)
+    // A. Personal Long-Term Memory Recall
+    if (lowerInput.includes("yaad") || lowerInput.includes("remember")) {
+        const memories = await getPersonalContext(lowerInput);
+        if (memories && memories.length > 0) {
+            const lastThing = memories[memories.length - 1].text;
+            return `Haan! Mujhe yaad hai aapne kaha tha: "${lastThing}" 😊`;
+        }
+    }
+
+    // B. Short-Term Conversation Context
+    if (history.length > 0) {
+        const lastUserMsg = history[history.length - 1]?.text.toLowerCase();
+        if (lowerInput === "kyun" || lowerInput === "why") {
+            return "Main abhi is par aur seekh rahi hoon, par context ke hisab se yeh dilchasp hai! ✨";
+        }
+    }
+
+    // C. Instant Pre-Replies
     if (preReplies[lowerInput]) {
         return preReplies[lowerInput];
     }
 
-    await authReady;
-
     try {
-        // STEP 2: Cache High-Rating Brain (Top Trending)
+        // D. Cache Brain (Top 100 Trending)
         if (!brainCache) {
             const q = query(collection(db, "brain"), orderBy("hitCount", "desc"), limit(100));
             const snap = await getDocs(q);
@@ -62,7 +89,6 @@ export async function getSmartReply(text) {
         let bestMatch = null;
         let highestScore = 0;
 
-        // STEP 3: Multi-Language Similarity Search
         brainCache.forEach(data => {
             const score = getSimilarity(lowerInput, (data.question || "").toLowerCase());
             if (score > highestScore) {
@@ -71,29 +97,22 @@ export async function getSmartReply(text) {
             }
         });
 
-        if (highestScore > 0.72) {
+        if (highestScore > 0.70) {
             const docRef = doc(db, "brain", bestMatch.id);
             updateDoc(docRef, { hitCount: increment(1) }).catch(e => console.log(e));
 
             const answers = bestMatch.answers || [bestMatch.answer];
-            let reply = answers[Math.floor(Math.random() * answers.length)];
-
-            // Step 4: Final Translation to User's Native Language
-            if (userLang !== 'en' && userLang !== 'hi') {
-                reply = await translateText(reply, userLang);
-            }
-
-            return reply;
+            return answers[Math.floor(Math.random() * answers.length)];
         }
 
-        // STEP 5: Learning Mode (Global)
+        // E. Learning Mode
         return {
             status: "NEED_LEARNING",
             question: lowerInput,
-            msg: "I am still learning global nuances! Could you please teach me the best response? 😊"
+            msg: "Mmm, ye mere liye naya hai! Kya tum mujhe iska sahi jawab sikha sakte ho? 😊"
         };
     } catch (e) {
-        console.error("Global Connection Error:", e);
-        return "Establishing global satellite connection... 🛰️";
+        console.error("Global Error:", e);
+        return "🛰️ Satellite connection re-establishing...";
     }
 }
