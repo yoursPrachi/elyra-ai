@@ -6,61 +6,138 @@
   <title>Elyra Admin Dashboard</title>
   <link rel="stylesheet" href="./admin.css" />
   <style>
-    body { font-family: sans-serif; background: #f4f6f9; margin:0; }
-    header { background:#2c3e50; color:#fff; padding:16px; text-align:center; }
-    section { margin:20px; background:#fff; padding:16px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.08); }
-    table { width:100%; border-collapse:collapse; margin-top:10px; }
-    th, td { border:1px solid #eaeaea; padding:8px; text-align:left; }
-    th { background:#f8f9fa; }
-    input { width:100%; padding:6px; }
-    textarea { width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; }
-    .btn { padding:6px 10px; border:none; border-radius:4px; cursor:pointer; }
+    body {
+      font-family: 'Segoe UI', sans-serif;
+      background: linear-gradient(135deg, #1f1c2c, #928dab);
+      margin: 0;
+      min-height: 100vh;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    header {
+      background: rgba(255,255,255,0.1);
+      color: #fff;
+      padding: 20px;
+      text-align: center;
+      font-size: 22px;
+      border-radius: 12px;
+      backdrop-filter: blur(10px);
+    }
+    section {
+      margin: 20px;
+      background: rgba(255,255,255,0.15);
+      padding: 20px;
+      border-radius: 12px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.2);
+      backdrop-filter: blur(12px);
+      color: #fff;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 10px;
+    }
+    th, td {
+      border: 1px solid rgba(255,255,255,0.2);
+      padding: 8px;
+      color: #fff;
+    }
+    th { background: rgba(255,255,255,0.2); }
+    input, textarea {
+      width: 100%;
+      padding: 8px;
+      border-radius: 6px;
+      border: none;
+      margin-top: 6px;
+    }
+    .btn {
+      padding: 8px 12px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      margin-top: 8px;
+      transition: 0.3s;
+    }
     .btn-primary { background:#27ae60; color:#fff; }
+    .btn-primary:hover { background:#2ecc71; }
     .btn-danger { background:#e74c3c; color:#fff; }
+    .btn-danger:hover { background:#ff4d4d; }
+    #login-gate {
+      background: rgba(255,255,255,0.15);
+      padding: 30px;
+      border-radius: 12px;
+      text-align: center;
+      color: #fff;
+      backdrop-filter: blur(12px);
+    }
+    #dashboard { display:none; }
   </style>
 </head>
 <body>
-  <header>🚀 Elyra AI Admin Dashboard</header>
+  <!-- Login Gate -->
+  <div id="login-gate">
+    <h2>🔑 Admin Login</h2>
+    <input id="admin-pass" type="password" placeholder="Enter Admin Password" />
+    <br/><br/>
+    <button class="btn btn-primary" onclick="window.checkAdmin()">Login</button>
+    <p id="login-msg" style="color:#ffcccc;"></p>
+  </div>
 
-  <section>
-    <h2>📊 Analytics</h2>
-    <div>
-      Total: <span id="total-visits">0</span> |
-      Today: <span id="today-visits">0</span> |
-      Active: <span id="active-users">0</span>
-    </div>
-  </section>
+  <!-- Dashboard -->
+  <div id="dashboard">
+    <header>🚀 Elyra AI Admin Dashboard</header>
 
-  <section>
-    <h2>🧠 Brain (Trending QnA)</h2>
-    <table id="trending-table"><tr><td>Loading...</td></tr></table>
-  </section>
+    <section>
+      <h2>📊 Analytics</h2>
+      <div>
+        Total: <span id="total-visits">0</span> |
+        Today: <span id="today-visits">0</span> |
+        Active: <span id="active-users">0</span>
+      </div>
+    </section>
 
-  <section>
-    <h2>✅ Approvals (User Suggestions)</h2>
-    <div id="review-container">Loading...</div>
-  </section>
+    <section>
+      <h2>🧠 Brain (Trending QnA)</h2>
+      <table id="trending-table"><tr><td>Loading...</td></tr></table>
+    </section>
 
-  <section>
-    <h2>👥 Users</h2>
-    <table id="user-list-table"><tr><td>Loading...</td></tr></table>
-  </section>
+    <section>
+      <h2>✅ Approvals</h2>
+      <div id="review-container">Loading...</div>
+    </section>
 
-  <section>
-    <h2>📥 Bulk QnA Upload</h2>
-    <p style="color:#555;">Format: <code>Question | Answer</code> per line</p>
-    <textarea id="bulk-qna-input" rows="8" placeholder="What is AI? | Artificial Intelligence"></textarea><br/><br/>
-    <button class="btn btn-primary" onclick="window.uploadBulkQnA()">Upload ✅</button>
-  </section>
+    <section>
+      <h2>👥 Users</h2>
+      <table id="user-list-table"><tr><td>Loading...</td></tr></table>
+    </section>
 
-  <section>
-    <h2>🧹 Brain Scan</h2>
-    <p style="color:#555;">Scan and clean duplicate or invalid QnA entries</p>
-    <button class="btn btn-primary" onclick="window.scanBrain()">Run Brain Scan 🔍</button>
-    <div id="scan-result" style="margin-top:10px;color:#555;"></div>
-  </section>
+    <section>
+      <h2>📥 Bulk QnA Upload</h2>
+      <textarea id="bulk-qna-input" rows="6" placeholder="Question | Answer"></textarea><br/>
+      <button class="btn btn-primary" onclick="window.uploadBulkQnA()">Upload ✅</button>
+    </section>
+
+    <section>
+      <h2>🧹 Brain Scan</h2>
+      <button class="btn btn-primary" onclick="window.scanBrain()">Run Brain Scan 🔍</button>
+      <div id="scan-result" style="margin-top:10px;color:#fff;"></div>
+    </section>
+  </div>
 
   <script type="module" src="../firebase.js"></script>
   <script type="module" src="./admin.js"></script>
+  <script>
+    window.checkAdmin = () => {
+      const pass = document.getElementById("admin-pass").value;
+      const msg = document.getElementById("login-msg");
+      if(pass === "elyra-secret"){ // 🔑 Change password here
+        document.getElementById("login-gate").style.display = "none";
+        document.getElementById("dashboard").style.display = "block";
+      } else {
+        msg.textContent = "Wrong password ❌";
+      }
+    };
+  </script>
 </body>
 </html>
