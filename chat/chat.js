@@ -1,3 +1,13 @@
+import { getSmartReply } from "../smartReply.js";
+import { addMsg } from "../utils/dom.js";
+import { resetProactiveTimer } from "../utils/timers.js";
+import { handleLearning } from "./learning.js";
+import { saveToGlobalMemory } from "../utils/memory.js";
+
+let conversationHistory = [];
+let isLearning = localStorage.getItem("isLearning") === "true";
+let pendingQuestion = localStorage.getItem("pendingQuestion") || "";
+
 export function initChat() {
   const input = document.getElementById("input");
   const sendBtn = document.getElementById("send-btn");
@@ -16,6 +26,8 @@ async function send() {
   const typing = document.getElementById("typing");
   const text = input.value.trim();
   if (!text) return;
+
+  console.log("Send triggered:", text);
 
   input.value = "";
   addMsg(text, "user");
