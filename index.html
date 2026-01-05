@@ -58,28 +58,29 @@
 
 <script type="module" src="app.js"></script>
 <script>
-  // Ensure chat shows after login
+  // Show name form
   window.showNameForm = () => {
     document.getElementById("initial-options").style.display = "none";
     document.getElementById("name-form").style.display = "block";
   };
 
+  // Named chat
   window.startNamedChat = async () => {
     const name = document.getElementById("u-name").value.trim();
     const email = document.getElementById("u-email").value.trim();
     if (name && email) {
       document.getElementById("welcome-popup").style.display = "none";
-      document.getElementById("app-container").style.display = "block"; // ✅ force show
-      // Call your existing greeting logic
+      document.getElementById("app-container").style.display = "flex"; // ✅ show chat
       initiateInternationalGreeting(name, "named", "Earth");
     } else {
       alert("Suno! Details toh bharo pehle.. ✨");
     }
   };
 
+  // Guest chat
   window.startGuestChat = async () => {
     document.getElementById("welcome-popup").style.display = "none";
-    document.getElementById("app-container").style.display = "block"; // ✅ force show
+    document.getElementById("app-container").style.display = "flex"; // ✅ show chat
     initiateInternationalGreeting("Dost", "guest", "Earth");
   };
 </script>
