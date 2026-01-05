@@ -8,6 +8,10 @@
   <style>
     /* Ensure chat stays hidden until login */
     #app-container { display: none; }
+    .user-message { background:#dcf8c6; padding:8px; margin:5px; border-radius:8px; }
+    .bot-message { background:#fff; padding:8px; margin:5px; border-radius:8px; border:1px solid #ddd; }
+    .hidden { display:none; }
+    main#chat { padding:10px; height:300px; overflow-y:auto; }
   </style>
 </head>
 <body>
@@ -37,7 +41,7 @@
 <!-- Chat Container -->
 <div id="app-container">
   <header>
-    <img src="https://i.imgur.com/8Km9tLL.png" class="avatar">
+    <img src="https://i.imgur.com/8Km9tLL.png" class="avatar" style="width:40px; border-radius:50%;">
     <div class="user-info">
       <h3>Elyra AI</h3>
       <span id="status">online</span>
@@ -48,41 +52,71 @@
 
   <div id="typing" class="hidden">Elyra is typing...</div>
 
-  <footer class="input-area">
-    <div class="input-wrapper">
-      <input type="text" id="input" placeholder="Type a message..." autocomplete="off">
-    </div>
-    <button id="send-btn" onclick="send()">➤</button>
+  <footer class="input-area" style="display:flex; gap:5px; padding:10px;">
+    <input type="text" id="input" placeholder="Type a message..." autocomplete="off" style="flex:1; padding:8px;">
+    <button id="send-btn">➤</button>
   </footer>
 </div>
 
-<script type="module" src="app.js"></script>
 <script>
   // Show name form
-  window.showNameForm = () => {
+  function showNameForm() {
     document.getElementById("initial-options").style.display = "none";
     document.getElementById("name-form").style.display = "block";
-  };
+  }
 
   // Named chat
-  window.startNamedChat = async () => {
+  function startNamedChat() {
     const name = document.getElementById("u-name").value.trim();
     const email = document.getElementById("u-email").value.trim();
     if (name && email) {
       document.getElementById("welcome-popup").style.display = "none";
-      document.getElementById("app-container").style.display = "flex"; // ✅ show chat
-      initiateInternationalGreeting(name, "named", "Earth");
+      document.getElementById("app-container").style.display = "block";
+      addMsg(`Welcome ${name}! Chat started.`, "bot");
     } else {
       alert("Suno! Details toh bharo pehle.. ✨");
     }
-  };
+  }
 
   // Guest chat
-  window.startGuestChat = async () => {
+  function startGuestChat() {
     document.getElementById("welcome-popup").style.display = "none";
-    document.getElementById("app-container").style.display = "flex"; // ✅ show chat
-    initiateInternationalGreeting("Dost", "guest", "Earth");
-  };
+    document.getElementById("app-container").style.display = "block";
+    addMsg("Welcome Guest 👤! Chat started.", "bot");
+  }
+
+  // Add message to chat
+  function addMsg(text, role) {
+    const chat = document.getElementById("chat");
+    const msgDiv = document.createElement("div");
+    msgDiv.className = role === "user" ? "user-message" : "bot-message";
+    msgDiv.textContent = text;
+    chat.appendChild(msgDiv);
+    chat.scrollTop = chat.scrollHeight;
+  }
+
+  // Send function
+  function send() {
+    const input = document.getElementById("input");
+    const typing = document.getElementById("typing");
+    const text = input.value.trim();
+    if (!text) return;
+
+    addMsg(text, "user");
+    input.value = "";
+
+    typing.classList.remove("hidden");
+    setTimeout(() => {
+      typing.classList.add("hidden");
+      addMsg("Bot reply to: " + text, "bot");
+    }, 1000);
+  }
+
+  // Bind events
+  document.getElementById("send-btn").addEventListener("click", send);
+  document.getElementById("input").addEventListener("keypress", (e) => {
+    if (e.key === "Enter") send();
+  });
 </script>
 </body>
 </html>
