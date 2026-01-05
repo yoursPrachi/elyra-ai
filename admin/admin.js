@@ -1,10 +1,9 @@
-import { db } from "./firebase.js";
+import { db } from "../firebase.js";
 import {
-  collection, addDoc, getDoc, getDocs, deleteDoc, doc, updateDoc,
+  collection, addDoc, getDoc, deleteDoc, doc, updateDoc,
   serverTimestamp, query, orderBy, limit, where, onSnapshot
 } from "https://www.gstatic.com/firebasejs/10.7.0/firebase-firestore.js";
 
-// --- Utilities ---
 const $ = (id) => document.getElementById(id);
 const escapeHTML = (s = "") =>
   s.replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;","\"":"&quot;","'":"&#39;" }[c]));
@@ -16,48 +15,39 @@ const toast = (msg) => {
   setTimeout(() => t.remove(), 1600);
 };
 
-// --- Dashboard initialization ---
 window.addEventListener("DOMContentLoaded", () => {
-  console.log("Admin Dashboard Connecting... 🚀");
+  console.log("Admin Dashboard Loaded ✅");
   initDashboard();
 });
 
 function initDashboard() {
-  trackLiveStats();   // Analytics (read-only)
-  loadUsers();        // User Activity Log (read-only)
-  loadBrainData();    // Bot Intelligence (admin only)
-  loadPending();      // Approvals (admin only)
+  trackLiveStats();
+  loadUsers();
+  loadBrainData();
+  loadPending();
 }
 
-// --- 1. Live analytics (read-only) ---
+// --- Analytics ---
 function trackLiveStats() {
-  const startOfToday = new Date();
-  startOfToday.setHours(0, 0, 0, 0);
+  const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0);
   const activeTime = new Date(Date.now() - 5 * 60000);
 
-  const totalVisitsEl = $("total-visits");
-  const todayVisitsEl = $("today-visits");
-  const activeUsersEl = $("active-users");
-
-  if (!totalVisitsEl || !todayVisitsEl || !activeUsersEl) return;
-
-  // Read-only snapshots
   onSnapshot(collection(db, "analytics"), (snap) => {
-    totalVisitsEl.innerText = snap.size;
-  }, console.error);
+    $("total-visits").innerText = snap.size;
+  });
 
   const todayQ = query(collection(db, "analytics"), where("timestamp", ">=", startOfToday));
   onSnapshot(todayQ, (snap) => {
-    todayVisitsEl.innerText = snap.size;
-  }, console.error);
+    $("today-visits").innerText = snap.size;
+  });
 
   const activeQ = query(collection(db, "analytics"), where("timestamp", ">=", activeTime));
   onSnapshot(activeQ, (snap) => {
-    activeUsersEl.innerText = snap.size;
-  }, console.error);
+    $("active-users").innerText = snap.size;
+  });
 }
 
-// --- 2. Bot brain management (admin only) ---
+// --- Brain ---
 function renderBrainHeader() {
   return `<tr><th>Question</th><th>Answer</th><th>Hits</th><th>Actions</th></tr>`;
 }
@@ -91,17 +81,16 @@ function loadBrainData() {
     snap.forEach((d) => {
       table.innerHTML += renderBrainRow(d.id, d.data());
     });
-  }, console.error);
+  });
 }
 
-// Admin-only actions
 window.updateBotAnswer = async (id) => {
-  try {
-    const input = document.getElementById(`ans-${id}`);
-    if (!input) return;
-    const newAns = input.value?.trim();
-    if (!newAns) return toast("Answer cannot be empty!");
+  const input = document.getElementById(`ans-${id}`);
+  if (!input) return;
+  const newAns = input.value?.trim();
+  if (!newAns) return toast("Answer cannot be empty!");
 
+  try {
     await updateDoc(doc(db, "brain", id), {
       answers: [newAns],
       timestamp: serverTimestamp(),
@@ -109,7 +98,7 @@ window.updateBotAnswer = async (id) => {
     toast("Bot intelligence updated 🧠");
   } catch (e) {
     console.error(e);
-    toast("Update failed (check rules)");
+    toast("Update failed");
   }
 };
 
@@ -120,91 +109,10 @@ window.deleteFromBrain = async (id) => {
     toast("Deleted from brain");
   } catch (e) {
     console.error(e);
-    toast("Delete failed (check rules)");
+    toast("Delete failed");
   }
 };
 
-// --- 3. Approval system (admin only) ---
+// --- Approvals ---
 function loadPending() {
   const container = $("review-container");
-  if (!container) return;
-
-  onSnapshot(collection(db, "temp_learning"), (snap) => {
-    container.innerHTML = "";
-    if (snap.empty) {
-      container.innerHTML = "<p style='padding:20px;color:#888;'>No pending reviews. 🕊️</p>";
-      return;
-    }
-    snap.forEach((docSnap) => {
-      const data = docSnap.data();
-      const id = docSnap.id;
-      const card = document.createElement("div");
-      card.style =
-        "background:#fffbe6;padding:15px;border-radius:8px;border-left:5px solid #f1c40f;margin-bottom:15px;";
-      const q = escapeHTML(data.question || "");
-      const a = escapeHTML(data.answer || "");
-      card.innerHTML = `
-        <p style="font-size:11px;color:#999;">USER SUGGESTION</p>
-        <p><b>Q:</b> ${q}</p>
-        <p><b>A:</b> <span style="color:#075e54">${a}</span></p>
-        <div style="display:flex;gap:10px;margin-top:10px;">
-          <button onclick="window.approveLearning('${id}')" class="btn-save">Approve ✅</button>
-          <button onclick="window.rejectLearning('${id}')" class="btn-del">Reject ❌</button>
-        </div>`;
-      container.appendChild(card);
-    });
-  }, console.error);
-}
-
-window.approveLearning = async (id) => {
-  try {
-    const ref = doc(db, "temp_learning", id);
-    const snap = await getDoc(ref);
-    if (!snap.exists()) return toast("Suggestion not found");
-
-    const d = snap.data();
-    const question = (d.question || "").toLowerCase().trim();
-    const answer = (d.answer || "").trim();
-    if (!question || !answer) return toast("Invalid suggestion data");
-
-    await addDoc(collection(db, "brain"), {
-      question,
-      answers: [answer],
-      hitCount: 1,
-      timestamp: serverTimestamp(),
-    });
-    await deleteDoc(ref);
-    toast("Approved and added to Brain ✨");
-  } catch (e) {
-    console.error(e);
-    toast("Approval failed (check rules)");
-  }
-};
-
-window.rejectLearning = async (id) => {
-  if (!confirm("Delete this suggestion?")) return;
-  try {
-    await deleteDoc(doc(db, "temp_learning", id));
-    toast("Suggestion rejected");
-  } catch (e) {
-    console.error(e);
-    toast("Reject failed (check rules)");
-  }
-};
-
-// --- 4. User activity log (read-only) ---
-function loadUsers() {
-  const table = $("user-list-table");
-  if (!table) return;
-
-  const q = query(collection(db, "users_list"), orderBy("lastSeen", "desc"));
-  onSnapshot(q, (snap) => {
-    table.innerHTML = `<tr><th>Name</th><th>Email</th><th>Visits</th><th>Last Seen</th></tr>`;
-    if (snap.empty) {
-      table.innerHTML += `<tr><td colspan="4" style="color:#888;padding:12px;">No users yet.</td></tr>`;
-      return;
-    }
-    snap.forEach((d) => {
-      const u = d.data();
-      const name = escapeHTML(u.name || "User");
-      const email = escapeHTML(u.email || "N
