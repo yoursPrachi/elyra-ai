@@ -8,7 +8,7 @@ export function initChat() {
 
   sendBtn.addEventListener("click", send);
 
-  window.send = send; // optional, if you still want inline onclick
+  window.send = send; // optional if using inline onclick
 }
 
 async function send() {
