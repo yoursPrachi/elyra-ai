@@ -10,13 +10,13 @@ export function initApprovals() {
     if (!container) return;
     container.innerHTML = "";
     if (snap.empty) {
-      container.innerHTML = "<p style='color:#888;'>No pending reviews. 🕊️</p>";
+      container.innerHTML = "<p style='color:#aaa;'>No pending reviews. 🕊️</p>";
       return;
     }
     snap.forEach(docSnap => {
       const d = docSnap.data();
       container.innerHTML += `
-        <div style="margin-bottom:10px;padding:10px;border-left:4px solid orange;background:#fffbe6">
+        <div class="pending-card">
           <p><b>Q:</b> ${d.question}</p>
           <p><b>A:</b> ${d.answer}</p>
           <button class="btn btn-primary" onclick="window.approveLearning('${docSnap.id}')">Approve ✅</button>
