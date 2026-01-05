@@ -1,16 +1,11 @@
 :root {
   --wa-header: #075e54;
-  --wa-bg: #efe7dd; /* Light WhatsApp wallpaper color */
+  --wa-bg: #efe7dd;
   --wa-msg-in: #ffffff;
   --wa-msg-out: #dcf8c6;
-  --wa-status: #e9edef;
 }
 
-* { 
-  box-sizing: border-box; 
-  margin: 0; 
-  padding: 0; 
-}
+* { box-sizing: border-box; margin: 0; padding: 0; }
 
 body {
   font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -19,18 +14,16 @@ body {
   display: flex;
   justify-content: center;
   overflow: hidden;
-  padding-bottom: 70px; /* space for input bar */
 }
 
 /* Main Container */
 #app-container {
   width: 100%;
   max-width: 500px;
-  height: 100dvh; /* Mobile Keyboard friendly */
+  height: 100vh;
   display: flex;
   flex-direction: column;
-  background: url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
-  background-color: var(--wa-bg);
+  background: var(--wa-bg) url('https://user-images.githubusercontent.com/15075759/28719144-86dc0f70-73b1-11e7-911d-60d70fcded21.png');
   position: relative;
 }
 
@@ -42,17 +35,9 @@ header {
   display: flex;
   align-items: center;
   gap: 12px;
-  z-index: 10;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
 }
 
-.avatar { 
-  width: 40px; 
-  height: 40px; 
-  border-radius: 50%; 
-  object-fit: cover;
-}
-
+.avatar { width: 40px; height: 40px; border-radius: 50%; object-fit: cover; }
 .user-info h3 { font-size: 16px; margin-bottom: 2px; }
 .user-info span { font-size: 12px; opacity: 0.8; }
 
@@ -60,78 +45,25 @@ header {
 #chat {
   flex: 1;
   overflow-y: auto;
-  padding: 15px 10px 80px; /* bottom padding for input bar */
+  padding: 15px 10px 80px; /* space for input bar */
   display: flex;
   flex-direction: column;
-  gap: 4px; /* Real WA has small gap */
+  gap: 4px;
 }
 
-/* --- UNIQUE MESSAGE BUBBLES --- */
-.msg {
-  max-width: 85%;
-  padding: 6px 7px 3px 9px;
-  font-size: 14.5px;
-  position: relative;
-  box-shadow: 0 1px 0.5px rgba(0,0,0,0.13);
-  margin-bottom: 4px;
-  display: flex;
-  flex-direction: column;
-  word-wrap: break-word;
-}
-
-/* Bot Message Style (Incoming) */
-.bot {
-  align-self: flex-start;
-  background: var(--wa-msg-in);
-  border-radius: 0 8px 8px 8px; /* Sharp top-left corner */
-}
-
-/* User Message Style (Outgoing) */
-.user {
-  align-self: flex-end;
-  background: var(--wa-msg-out);
-  border-radius: 8px 0 8px 8px; /* Sharp top-right corner */
-}
-
-/* Text Container */
-.msg-content {
-  margin-right: 25px; /* Time ke liye jagah */
-  color: #111b21;
-}
-
-/* Time & Ticks (Message ke bahar/niche bottom-right mein) */
-.time {
-  font-size: 10.5px;
-  color: #667781;
-  align-self: flex-end;
-  margin-top: -8px; /* Text ke thoda upar overlap logic */
-  display: flex;
-  align-items: center;
-  justify-content: flex-end;
-  gap: 3px;
-  min-width: 55px;
-}
-
-/* Blue Ticks */
-.ticks {
-  color: #53bdeb;
-  font-size: 12px;
-  letter-spacing: -3px;
-  margin-left: 2px;
-}
+/* Messages */
+.msg { max-width: 85%; padding: 6px 7px 3px 9px; font-size: 14.5px; margin-bottom: 4px; display: flex; flex-direction: column; word-wrap: break-word; }
+.bot { align-self: flex-start; background: var(--wa-msg-in); border-radius: 0 8px 8px 8px; }
+.user { align-self: flex-end; background: var(--wa-msg-out); border-radius: 8px 0 8px 8px; }
+.msg-content { margin-right: 25px; color: #111b21; }
+.time { font-size: 10.5px; color: #667781; align-self: flex-end; margin-top: -8px; }
 
 /* Typing Indicator */
-#typing {
-  padding: 8px 20px;
-  font-size: 13px;
-  color: #667781;
-  font-style: italic;
-  background: rgba(255,255,255,0.5);
-}
+#typing { padding: 8px 20px; font-size: 13px; color: #667781; font-style: italic; }
 
 /* Input Bar */
 .input-area {
-  position: fixed;
+  position: absolute;
   bottom: 0;
   left: 0;
   width: 100%;
@@ -142,7 +74,6 @@ header {
   gap: 8px;
   background: var(--wa-bg);
   box-shadow: 0 -1px 3px rgba(0,0,0,0.1);
-  z-index: 5;
 }
 
 .input-wrapper {
@@ -152,7 +83,6 @@ header {
   padding: 0 15px;
   display: flex;
   align-items: center;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.1);
 }
 
 #input {
@@ -174,27 +104,5 @@ header {
   align-items: center;
   justify-content: center;
   cursor: pointer;
-  box-shadow: 0 1px 2px rgba(0,0,0,0.2);
   font-size: 18px;
-}
-
-#send-btn:hover {
-  transform: scale(1.05);
-  box-shadow: 0 2px 5px rgba(0,0,0,0.3);
-}
-
-.hidden { display: none; }
-
-#welcome-popup {
-  transition: all 0.5s ease-in-out;
-}
-
-#name-form input {
-  outline: none;
-  transition: 0.3s;
-}
-
-#name-form input:focus {
-  border-color: #25d366;
-  box-shadow: 0 0 5px rgba(37, 211, 102, 0.3);
 }
