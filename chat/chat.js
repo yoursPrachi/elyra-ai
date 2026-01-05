@@ -43,4 +43,23 @@ async function send() {
 
       setTimeout(() => {
         typing.classList.add("hidden");
-        if (isNeedLearning)
+
+        if (isNeedLearning) {
+          // Learning mode trigger
+          pendingQuestion = text;
+          localStorage.setItem("pendingQuestion", text);
+          addMsg("Mujhe ye seekhna hai... Aap mujhe sikhayenge? 🤔", "bot");
+        } else {
+          // Normal bot reply
+          addMsg(finalReply, "bot");
+          conversationHistory.push({ role: "bot", text: finalReply });
+          resetProactiveTimer();
+        }
+      }, thinkTime);
+    } catch (err) {
+      typing.classList.add("hidden");
+      addMsg("Oops! Kuch gadbad ho gayi 😅", "bot");
+      console.error(err);
+    }
+  }, 300);
+}
