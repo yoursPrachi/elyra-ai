@@ -1,4 +1,3 @@
-// admin-dashboard.js
 import { db } from "./firebase.js";
 import {
   collection, addDoc, getDoc, getDocs, deleteDoc, doc, updateDoc,
@@ -17,24 +16,24 @@ const toast = (msg) => {
   setTimeout(() => t.remove(), 1600);
 };
 
-// --- 1. Dashboard initialization ---
+// --- Dashboard initialization ---
 window.addEventListener("DOMContentLoaded", () => {
   console.log("Admin Dashboard Connecting... 🚀");
   initDashboard();
 });
 
 function initDashboard() {
-  trackLiveStats();   // Active Now, Today, Total Stats
-  loadUsers();        // User Activity Log
-  loadBrainData();    // Bot Intelligence & Update Logic
-  loadPending();      // User Learning Approvals
+  trackLiveStats();   // Analytics (read-only)
+  loadUsers();        // User Activity Log (read-only)
+  loadBrainData();    // Bot Intelligence (admin only)
+  loadPending();      // Approvals (admin only)
 }
 
-// --- 2. Live analytics (Real-time) ---
+// --- 1. Live analytics (read-only) ---
 function trackLiveStats() {
   const startOfToday = new Date();
   startOfToday.setHours(0, 0, 0, 0);
-  const activeTime = new Date(Date.now() - 5 * 60000); // Last 5 mins
+  const activeTime = new Date(Date.now() - 5 * 60000);
 
   const totalVisitsEl = $("total-visits");
   const todayVisitsEl = $("today-visits");
@@ -42,6 +41,7 @@ function trackLiveStats() {
 
   if (!totalVisitsEl || !todayVisitsEl || !activeUsersEl) return;
 
+  // Read-only snapshots
   onSnapshot(collection(db, "analytics"), (snap) => {
     totalVisitsEl.innerText = snap.size;
   }, console.error);
@@ -57,7 +57,7 @@ function trackLiveStats() {
   }, console.error);
 }
 
-// --- 3. Bot brain management (Update/Edit Logic) ---
+// --- 2. Bot brain management (admin only) ---
 function renderBrainHeader() {
   return `<tr><th>Question</th><th>Answer</th><th>Hits</th><th>Actions</th></tr>`;
 }
@@ -94,27 +94,22 @@ function loadBrainData() {
   }, console.error);
 }
 
+// Admin-only actions
 window.updateBotAnswer = async (id) => {
-  const input = document.getElementById(`ans-${id}`);
-  if (!input) return;
-  const newAns = input.value?.trim();
-  if (!newAns) return toast("Answer cannot be empty!");
-
   try {
+    const input = document.getElementById(`ans-${id}`);
+    if (!input) return;
+    const newAns = input.value?.trim();
+    if (!newAns) return toast("Answer cannot be empty!");
+
     await updateDoc(doc(db, "brain", id), {
       answers: [newAns],
       timestamp: serverTimestamp(),
     });
-    const row = document.getElementById(`row-${id}`);
-    if (row) {
-      row.style.transition = "background 0.6s";
-      row.style.background = "#e8f7ee";
-      setTimeout(() => (row.style.background = ""), 900);
-    }
     toast("Bot intelligence updated 🧠");
   } catch (e) {
     console.error(e);
-    toast("Update failed");
+    toast("Update failed (check rules)");
   }
 };
 
@@ -125,11 +120,11 @@ window.deleteFromBrain = async (id) => {
     toast("Deleted from brain");
   } catch (e) {
     console.error(e);
-    toast("Delete failed");
+    toast("Delete failed (check rules)");
   }
 };
 
-// --- 4. Approval system (temp_learning) ---
+// --- 3. Approval system (admin only) ---
 function loadPending() {
   const container = $("review-container");
   if (!container) return;
@@ -153,8 +148,8 @@ function loadPending() {
         <p><b>Q:</b> ${q}</p>
         <p><b>A:</b> <span style="color:#075e54">${a}</span></p>
         <div style="display:flex;gap:10px;margin-top:10px;">
-          <button onclick="window.approveLearning('${id}')" style="background:#27ae60;color:#fff;border:none;padding:8px;border-radius:4px;flex:1;cursor:pointer;">Approve ✅</button>
-          <button onclick="window.rejectLearning('${id}')" style="background:#e74c3c;color:#fff;border:none;padding:8px;border-radius:4px;flex:1;cursor:pointer;">Reject ❌</button>
+          <button onclick="window.approveLearning('${id}')" class="btn-save">Approve ✅</button>
+          <button onclick="window.rejectLearning('${id}')" class="btn-del">Reject ❌</button>
         </div>`;
       container.appendChild(card);
     });
@@ -182,7 +177,7 @@ window.approveLearning = async (id) => {
     toast("Approved and added to Brain ✨");
   } catch (e) {
     console.error(e);
-    toast("Approval failed");
+    toast("Approval failed (check rules)");
   }
 };
 
@@ -193,11 +188,11 @@ window.rejectLearning = async (id) => {
     toast("Suggestion rejected");
   } catch (e) {
     console.error(e);
-    toast("Reject failed");
+    toast("Reject failed (check rules)");
   }
 };
 
-// --- 5. User activity log ---
+// --- 4. User activity log (read-only) ---
 function loadUsers() {
   const table = $("user-list-table");
   if (!table) return;
@@ -212,17 +207,4 @@ function loadUsers() {
     snap.forEach((d) => {
       const u = d.data();
       const name = escapeHTML(u.name || "User");
-      const email = escapeHTML(u.email || "N/A");
-      const visits = Number(u.visitCount || 1);
-      const lastSeen =
-        u.lastSeen ? new Date(u.lastSeen).toLocaleString() : "N/A";
-      table.innerHTML += `
-        <tr>
-          <td>${name}</td>
-          <td>${email}</td>
-          <td>${visits}</td>
-          <td>${lastSeen}</td>
-        </tr>`;
-    });
-  }, console.error);
-}
+      const email = escapeHTML(u.email || "N
