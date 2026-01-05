@@ -5,6 +5,19 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Elyra Admin Dashboard</title>
   <link rel="stylesheet" href="./admin.css" />
+  <style>
+    body { font-family: sans-serif; background: #f4f6f9; margin:0; }
+    header { background:#2c3e50; color:#fff; padding:16px; text-align:center; }
+    section { margin:20px; background:#fff; padding:16px; border-radius:8px; box-shadow:0 4px 12px rgba(0,0,0,0.08); }
+    table { width:100%; border-collapse:collapse; margin-top:10px; }
+    th, td { border:1px solid #eaeaea; padding:8px; text-align:left; }
+    th { background:#f8f9fa; }
+    input { width:100%; padding:6px; }
+    textarea { width:100%; padding:10px; border:1px solid #ddd; border-radius:6px; }
+    .btn { padding:6px 10px; border:none; border-radius:4px; cursor:pointer; }
+    .btn-primary { background:#27ae60; color:#fff; }
+    .btn-danger { background:#e74c3c; color:#fff; }
+  </style>
 </head>
 <body>
   <header>🚀 Elyra AI Admin Dashboard</header>
@@ -19,12 +32,12 @@
   </section>
 
   <section>
-    <h2>🧠 Brain</h2>
+    <h2>🧠 Brain (Trending QnA)</h2>
     <table id="trending-table"><tr><td>Loading...</td></tr></table>
   </section>
 
   <section>
-    <h2>✅ Approvals</h2>
+    <h2>✅ Approvals (User Suggestions)</h2>
     <div id="review-container">Loading...</div>
   </section>
 
@@ -34,9 +47,17 @@
   </section>
 
   <section>
-    <h2>📥 Bulk QnA</h2>
-    <textarea id="bulk-qna-input" rows="6" placeholder="Question | Answer"></textarea><br/>
-    <button onclick="window.uploadBulkQnA()">Upload ✅</button>
+    <h2>📥 Bulk QnA Upload</h2>
+    <p style="color:#555;">Format: <code>Question | Answer</code> per line</p>
+    <textarea id="bulk-qna-input" rows="8" placeholder="What is AI? | Artificial Intelligence"></textarea><br/><br/>
+    <button class="btn btn-primary" onclick="window.uploadBulkQnA()">Upload ✅</button>
+  </section>
+
+  <section>
+    <h2>🧹 Brain Scan</h2>
+    <p style="color:#555;">Scan and clean duplicate or invalid QnA entries</p>
+    <button class="btn btn-primary" onclick="window.scanBrain()">Run Brain Scan 🔍</button>
+    <div id="scan-result" style="margin-top:10px;color:#555;"></div>
   </section>
 
   <script type="module" src="../firebase.js"></script>
